@@ -163,13 +163,57 @@ function ProgressBar({ pct, color }) {
   );
 }
 
+// hook משותף — שולף רשומות אמיתיות מהסנדבוקס (לא נוגע במערכת החיה)
+function useHaccpRecords(limit) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    fetch(HACCP_WEBHOOK_URL + "?limit=" + limit)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
+        setRows(data.records.reverse());
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "לא ניתן היה לטעון נתונים");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  return { rows, loading, error, reload: load };
+}
+
+function mapHaccpStatus(s) {
+  if (s === "תקין") return "approved";
+  if (s === "לא תקין") return "failed";
+  if (s === "approved") return "approved";
+  return "pending";
+}
+
 function Overview({ plan }) {
+  const { rows, loading, error } = useHaccpRecords(3);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Card title="HACCP ואיכות" subtitle="2 טפסים פעילים" accent={CAT.haccp.main}>
-        <Row label="בקרת קבלת חומרי גלם" sub="עודכן 08:12" right={<Badge status="approved" />} />
-        <Divider />
-        <Row label="יומן ניקיון בוקר" sub="עודכן 07:40" right={<Badge status="approved" />} />
+      <Card title="HACCP ואיכות" subtitle="נתונים חיים מהגיליון" accent={CAT.haccp.main}>
+        {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+        {error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {error}</div>}
+        {!loading && !error && rows.length === 0 && (
+          <div style={{ fontSize: 13, color: T.inkFaint }}>אין רשומות עדיין.</div>
+        )}
+        {!loading && !error && rows.map((r, i) => (
+          <React.Fragment key={i}>
+            <Row label={r.material || "(ללא שם)"} sub={`${r.supplier || ""} · ${r.date || ""}`} right={<Badge status={mapHaccpStatus(r.status)} />} />
+            {i < rows.length - 1 && <Divider />}
+          </React.Fragment>
+        ))}
         {plan === "pro" ? (
           <>
             <Divider />
@@ -214,36 +258,7 @@ function Overview({ plan }) {
 }
 
 function HaccpModule({ plan }) {
-  const [liveRows, setLiveRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const mapStatus = (s) => {
-    if (s === "תקין") return "approved";
-    if (s === "לא תקין") return "failed";
-    if (s === "approved") return "approved";
-    return "pending";
-  };
-
-  const loadData = () => {
-    setLoading(true);
-    setError(null);
-    fetch(HACCP_WEBHOOK_URL + "?limit=10")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
-        setLiveRows(data.records.reverse());
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || "לא ניתן היה לטעון נתונים");
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const { rows: liveRows, loading, error, reload } = useHaccpRecords(10);
 
   const proRows = [
     { id: "0229", form: "אי-התאמה — סטיית טמפרטורה", by: "רונית כהן", time: "אתמול 19:05", status: "pending" },
@@ -258,7 +273,7 @@ function HaccpModule({ plan }) {
         accent={CAT.haccp.main}
         action={
           <button
-            onClick={loadData}
+            onClick={reload}
             style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
           >
             רענן
@@ -292,7 +307,7 @@ function HaccpModule({ plan }) {
                     <td style={{ padding: "12px 0", fontSize: 13.5, color: T.ink, fontWeight: 500, borderBottom: `1px solid ${T.border}` }}>{r.material}</td>
                     <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.batch}</td>
                     <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.inspector}</td>
-                    <td style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}` }}><Badge status={mapStatus(r.status)} /></td>
+                    <td style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}` }}><Badge status={mapHaccpStatus(r.status)} /></td>
                   </tr>
                 ))}
               </tbody>
