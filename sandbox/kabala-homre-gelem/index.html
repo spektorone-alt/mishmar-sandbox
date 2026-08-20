@@ -502,6 +502,7 @@ document.getElementById("exportBtn").addEventListener("click", ()=>{
 // הוא ממשיך להישמר רק לצורך תצוגה מקומית וייצוא ה-Excel הידני.
 function postRecord(rec){
   const { signature, ...payload } = rec;
+  payload.formType = "kabala_homre_gelem"; // מזהה סוג הטופס - חלק ממערכת מִשְמָר המאוחדת
   return fetch(WEBHOOK_URL, {
     method: "POST",
     mode: "no-cors",
