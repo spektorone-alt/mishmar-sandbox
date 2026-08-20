@@ -172,7 +172,7 @@ function useHaccpRecords(limit) {
   const load = () => {
     setLoading(true);
     setError(null);
-    fetch(HACCP_WEBHOOK_URL + "?limit=" + limit)
+    fetch(HACCP_WEBHOOK_URL + "?formType=kabala_homre_gelem&limit=" + limit)
       .then((res) => res.json())
       .then((data) => {
         if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
