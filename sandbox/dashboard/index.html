@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>מִשְמָר - דשבורד ניהול</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { margin: 0; padding: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect } = React;
+
+
+const T = {
+  bg: "#F7F8FA",
+  surface: "#FFFFFF",
+  border: "#E7E9ED",
+  ink: "#14171F",
+  inkSoft: "#6B7280",
+  inkFaint: "#9CA3AF",
+  success: "#0F9D58",
+  successSoft: "#E9F8EF",
+  warning: "#C87C1B",
+  warningSoft: "#FCF2E3",
+  danger: "#D6483F",
+  dangerSoft: "#FBEAE9",
+};
+
+// צבע ייחודי לכל קטגוריה — מזהה חזותי שעוזר לדעת מיד באיזה מודול נמצאים
+const CAT = {
+  overview: { main: "#3454D1", soft: "#EDF1FD" },
+  haccp:    { main: "#0E8A6D", soft: "#E6F5F0" },
+  production: { main: "#B4620A", soft: "#FBEDDC" },
+  whatsapp: { main: "#6D4FD1", soft: "#EFECFB" },
+};
+
+// חיבור חי לטופס "בקרת קבלת חומרי גלם" — פרויקט הסנדבוקס (לא נוגע במערכת החיה)
+const HACCP_WEBHOOK_URL =
+  "https://script.google.com/macros/s/AKfycbwWvXIvp2dS8i-qCseApYC1vvA-mEzEoXLyeBvhBnATUazrQCyLKLxaovOgw2OlswDd/exec";
+
+const FONTS = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+* { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+`;
+
+const MODULES = [
+  { id: "overview", label: "סקירה כללית" },
+  { id: "haccp", label: "HACCP ואיכות" },
+  { id: "production", label: "ניהול ייצור" },
+  { id: "whatsapp", label: "משלוחים והזמנות" },
+];
+
+const ICONS = {
+  overview: (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="3" width="7" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="12" width="7" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="16" width="7" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.8"/></svg>
+  ),
+  haccp: (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  ),
+  production: (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" strokeWidth="1.4"/></svg>
+  ),
+  whatsapp: (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 20l1.4-4.1A8 8 0 1112 20a7.9 7.9 0 01-4-1.1L4 20z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+  ),
+};
+
+function Badge({ status }) {
+  const map = {
+    approved: { text: "אושר", color: T.success, bg: T.successSoft },
+    pending: { text: "ממתין", color: T.warning, bg: T.warningSoft },
+    failed: { text: "נכשל", color: T.danger, bg: T.dangerSoft },
+  };
+  const s = map[status];
+  return (
+    <span style={{ fontSize: 12, fontWeight: 600, color: s.color, background: s.bg, borderRadius: 999, padding: "4px 12px", whiteSpace: "nowrap" }}>
+      {s.text}
+    </span>
+  );
+}
+
+function PlanBadge({ plan }) {
+  const isPro = plan === "pro";
+  return (
+    <div style={{ fontSize: 13, fontWeight: 600, color: isPro ? T.success : T.inkSoft, background: isPro ? T.successSoft : T.bg, border: `1px solid ${isPro ? "transparent" : T.border}`, borderRadius: 999, padding: "7px 16px", display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ width: 6, height: 6, borderRadius: 999, background: isPro ? T.success : T.inkFaint }} />
+      {isPro ? "חבילה מלאה" : "חבילה חינמית"}
+    </div>
+  );
+}
+
+function Card({ title, subtitle, accent, action, children, style }) {
+  return (
+    <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 16, padding: 22, boxShadow: "0 1px 2px rgba(20,23,31,0.03)", borderTop: accent ? `2.5px solid ${accent}` : undefined, ...style }}>
+      {title && (
+        <div className="flex justify-between items-start" style={{ marginBottom: 18 }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {accent && <span style={{ width: 7, height: 7, borderRadius: 999, background: accent }} />}
+              <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: T.ink }}>{title}</h3>
+            </div>
+            {subtitle && <p style={{ margin: "5px 0 0", fontSize: 14, color: T.inkFaint, paddingRight: accent ? 15 : 0 }}>{subtitle}</p>}
+          </div>
+          {action}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
+
+function Row({ label, sub, right }) {
+  return (
+    <div className="flex justify-between items-center" style={{ padding: "10px 0" }}>
+      <div>
+        <div style={{ fontSize: 13.5, color: T.ink, fontWeight: 500 }}>{label}</div>
+        {sub && <div style={{ fontSize: 12, color: T.inkFaint, marginTop: 2 }}>{sub}</div>}
+      </div>
+      <div>{right}</div>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div style={{ height: 1, background: T.border }} />;
+}
+
+function LockedCard({ title, blurb, accent = CAT.overview.main, soft = CAT.overview.soft }) {
+  return (
+    <Card accent={accent}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ width: 38, height: 38, borderRadius: 10, background: soft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <rect x="5" y="11" width="14" height="9" rx="2" stroke={accent} strokeWidth="1.8" />
+            <path d="M8 11V7a4 4 0 018 0v4" stroke={accent} strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 19, fontWeight: 700, color: T.ink }}>{title}</h3>
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: T.inkSoft, lineHeight: 1.6, maxWidth: 420 }}>{blurb}</p>
+        </div>
+        <button style={{ background: accent, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}>
+          שדרג לחבילה המלאה · ₪199 לחודש
+        </button>
+      </div>
+    </Card>
+  );
+}
+
+function ProgressBar({ pct, color }) {
+  return (
+    <div style={{ height: 6, background: T.bg, borderRadius: 999, overflow: "hidden" }}>
+      <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 999 }} />
+    </div>
+  );
+}
+
+function Overview({ plan }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <Card title="HACCP ואיכות" subtitle="2 טפסים פעילים" accent={CAT.haccp.main}>
+        <Row label="בקרת קבלת חומרי גלם" sub="עודכן 08:12" right={<Badge status="approved" />} />
+        <Divider />
+        <Row label="יומן ניקיון בוקר" sub="עודכן 07:40" right={<Badge status="approved" />} />
+        {plan === "pro" ? (
+          <>
+            <Divider />
+            <Row label="אי-התאמה #114" sub="דווח אתמול 19:05" right={<Badge status="pending" />} />
+          </>
+        ) : (
+          <div style={{ fontSize: 12.5, color: CAT.haccp.main, fontWeight: 600, marginTop: 14 }}>
+            + אי-התאמות וטרייסביליות מלאה בחבילה בתשלום
+          </div>
+        )}
+      </Card>
+
+      {plan === "pro" ? (
+        <Card title="ניהול ייצור" subtitle="קו לישה 2 · משמרת בוקר" accent={CAT.production.main}>
+          <div style={{ marginBottom: 6 }}>
+            <div className="flex justify-between" style={{ fontSize: 13, color: T.inkSoft, marginBottom: 8 }}>
+              <span>יעד יומי</span>
+              <span style={{ color: T.ink, fontWeight: 600 }}>640 / 900 יח&apos;</span>
+            </div>
+            <ProgressBar pct={71} color={CAT.production.main} />
+          </div>
+          <Divider />
+          <Row label="בקרת שקילה אחרונה" right={<Badge status="approved" />} />
+        </Card>
+      ) : (
+        <LockedCard title="ניהול ייצור" blurb="מעקב קווי ייצור, יעדים יומיים ובקרת שקילה בזמן אמת." accent={CAT.production.main} soft={CAT.production.soft} />
+      )}
+
+      {plan === "pro" ? (
+        <Card title="משלוחים" subtitle="3 נהגים פעילים" accent={CAT.whatsapp.main}>
+          <Row label="משה · רכב 1" right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.whatsapp.main }}>12 דק&apos;</span>} />
+          <Divider />
+          <Row label="דוד · רכב 3" right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.whatsapp.main }}>27 דק&apos;</span>} />
+          <Divider />
+          <Row label="יוסי · רכב 2" right={<Badge status="approved" />} />
+        </Card>
+      ) : (
+        <LockedCard title="משלוחים, הזמנות ותזכורות" blurb="קליטת הזמנות אוטומטית, מעקב GPS חי ותזכורות ללקוחות." accent={CAT.whatsapp.main} soft={CAT.whatsapp.soft} />
+      )}
+    </div>
+  );
+}
+
+function HaccpModule({ plan }) {
+  const [liveRows, setLiveRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const mapStatus = (s) => {
+    if (s === "תקין") return "approved";
+    if (s === "לא תקין") return "failed";
+    if (s === "approved") return "approved";
+    return "pending";
+  };
+
+  const loadData = () => {
+    setLoading(true);
+    setError(null);
+    fetch(HACCP_WEBHOOK_URL + "?limit=10")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
+        setLiveRows(data.records.reverse());
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "לא ניתן היה לטעון נתונים");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const proRows = [
+    { id: "0229", form: "אי-התאמה — סטיית טמפרטורה", by: "רונית כהן", time: "אתמול 19:05", status: "pending" },
+    { id: "0228", form: "בקרת לישה", by: "משה דהן", time: "אתמול 14:22", status: "failed" },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Card
+        title="יומן HACCP — בקרת קבלת חומרי גלם"
+        subtitle="נתונים חיים מהגיליון · חלק מהחבילה החינמית"
+        accent={CAT.haccp.main}
+        action={
+          <button
+            onClick={loadData}
+            style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
+          >
+            רענן
+          </button>
+        }
+      >
+        {loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
+        {error && (
+          <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>
+            שגיאה בטעינת הנתונים: {error}
+          </div>
+        )}
+        {!loading && !error && liveRows.length === 0 && (
+          <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין רשומות עדיין בגיליון.</div>
+        )}
+        {!loading && !error && liveRows.length > 0 && (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  {["תאריך", "ספק", "חומר גלם", "אצווה", "בודק", "סטטוס"].map((h) => (
+                    <th key={h} style={{ textAlign: "right", fontSize: 12, color: T.inkFaint, fontWeight: 600, padding: "0 0 10px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {liveRows.map((r, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.date} {r.time}</td>
+                    <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.supplier}</td>
+                    <td style={{ padding: "12px 0", fontSize: 13.5, color: T.ink, fontWeight: 500, borderBottom: `1px solid ${T.border}` }}>{r.material}</td>
+                    <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.batch}</td>
+                    <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.inspector}</td>
+                    <td style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}` }}><Badge status={mapStatus(r.status)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {plan !== "pro" && (
+        <LockedCard title="אי-התאמות ובקרת ייצור מלאה" blurb="דיווח אי-התאמות, בקרת לישה, בקרת אריזה וטרייסביליות מלאה זמינים בחבילה בתשלום." accent={CAT.haccp.main} soft={CAT.haccp.soft} />
+      )}
+    </div>
+  );
+}
+
+function ProductionModule() {
+  const lines = [
+    { name: "קו לישה 1", target: 900, actual: 900, status: "approved" },
+    { name: "קו לישה 2", target: 900, actual: 640, status: "pending" },
+    { name: "קו אריזה", target: 1200, actual: 1180, status: "approved" },
+  ];
+  return (
+    <Card title="קווי ייצור — משמרת בוקר" subtitle="19.08.2026" accent={CAT.production.main}>
+      <div className="flex flex-col gap-5">
+        {lines.map((l) => (
+          <div key={l.name}>
+            <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{l.name}</span>
+              <span style={{ fontSize: 13, color: T.inkSoft }}>{l.actual} / {l.target} יח&apos;</span>
+            </div>
+            <ProgressBar pct={Math.min(100, (l.actual / l.target) * 100)} color={l.status === "approved" ? T.success : CAT.production.main} />
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function WhatsappModule() {
+  const drivers = [
+    { name: "משה · רכב 1", dest: "סופרמרקט העיר, אשדוד", eta: "12 דק'", status: "pending" },
+    { name: "דוד · רכב 3", dest: "מאפיית הכיכר, אשקלון", eta: "27 דק'", status: "pending" },
+    { name: "יוסי · רכב 2", dest: "מלון דן, אשדוד", eta: "הגיע", status: "approved" },
+  ];
+  const orders = [
+    { client: "מאפיית הכיכר", items: "20 ק\"ג בצק פיצה", time: "09:14", status: "approved" },
+    { client: "סופרמרקט העיר", items: "35 ק\"ג בצק לחם", time: "08:52", status: "pending" },
+  ];
+  const reminders = [
+    { text: "תזכורת חידוש הזמנה שבועית — מלון דן", time: "מחר 07:00" },
+    { text: "תזכורת תשלום — מאפיית הכיכר", time: "היום 16:00" },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card title="מעקב משלוחים חי" subtitle="מבוט הוואטסאפ האוטומטי" accent={CAT.whatsapp.main} style={{ gridColumn: "1 / -1" }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {drivers.map((d) => (
+            <div key={d.name} style={{ background: T.bg, borderRadius: 12, padding: 14 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{d.name}</div>
+              <div style={{ fontSize: 12, color: T.inkFaint, margin: "4px 0 10px" }}>{d.dest}</div>
+              <div className="flex justify-between items-center">
+                <span style={{ fontSize: 13, fontWeight: 700, color: CAT.whatsapp.main }}>{d.eta}</span>
+                <Badge status={d.status} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="קליטת הזמנות" subtitle="התקבלו אוטומטית דרך הבוט" accent={CAT.whatsapp.main}>
+        {orders.map((o, i) => (
+          <React.Fragment key={o.client}>
+            <Row label={o.client} sub={o.items} right={<Badge status={o.status} />} />
+            {i < orders.length - 1 && <Divider />}
+          </React.Fragment>
+        ))}
+      </Card>
+
+      <Card title="תזכורות אוטומטיות" subtitle="ללקוחות ולנהגים" accent={CAT.whatsapp.main}>
+        {reminders.map((r, i) => (
+          <React.Fragment key={r.text}>
+            <Row label={r.text} right={<span style={{ fontSize: 12.5, color: T.inkFaint }}>{r.time}</span>} />
+            {i < reminders.length - 1 && <Divider />}
+          </React.Fragment>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+function MishmarDashboard() {
+  const [active, setActive] = useState("overview");
+  const [plan, setPlan] = useState("free");
+  const [collapsed, setCollapsed] = useState(false);
+  const factory = { name: "אדר בצקים" };
+  const activeColor = CAT[active].main;
+
+  const renderModule = () => {
+    if (active === "haccp") return <HaccpModule plan={plan} />;
+    if (active === "production")
+      return plan === "pro" ? <ProductionModule /> : (
+        <LockedCard title="ניהול ייצור" blurb="מעקב קווי ייצור, יעדים יומיים ובקרת שקילה בזמן אמת — זמין בחבילה המלאה." accent={CAT.production.main} soft={CAT.production.soft} />
+      );
+    if (active === "whatsapp")
+      return plan === "pro" ? <WhatsappModule /> : (
+        <LockedCard title="משלוחים, הזמנות ותזכורות" blurb="קליטת הזמנות אוטומטית מלקוחות, מעקב GPS חי ותזכורות אוטומטיות — זמין בחבילה המלאה." accent={CAT.whatsapp.main} soft={CAT.whatsapp.soft} />
+      );
+    return <Overview plan={plan} />;
+  };
+
+
+  return (
+    <div dir="rtl" style={{ minHeight: "100vh", background: T.bg, color: T.ink }}>
+      <style>{FONTS}</style>
+
+      {/* כותרת עליונה */}
+      <header
+        style={{
+          position: "sticky", top: 0, zIndex: 20,
+          background: T.surface, borderBottom: `1px solid ${T.border}`,
+          padding: "16px 20px",
+        }}
+      >
+        <div className="flex justify-between items-center flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 19, letterSpacing: "-0.01em", lineHeight: 1.1 }}>מִשְמָר</div>
+              <div style={{ fontSize: 12.5, color: T.inkFaint, fontWeight: 500 }}>אדר בצקים</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <PlanBadge plan={plan} />
+            <button
+              onClick={() => setPlan(plan === "pro" ? "free" : "pro")}
+              style={{ fontSize: 12, color: T.inkFaint, background: "transparent", border: `1px dashed ${T.border}`, borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}
+            >
+              החלף תצוגה להדגמה
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* תוכן ראשי — עם ריווח תחתון כדי לא להיחסם ע"י התפריט הקבוע */}
+      <main style={{ padding: "24px 20px", paddingBottom: 110 }}>
+        {renderModule()}
+      </main>
+
+      {/* תפריט תחתון קבוע — נשאר במקום בגלילה, בכל העמודים */}
+      <nav
+        style={{
+          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 30,
+          background: T.surface, borderTop: `1px solid ${T.border}`,
+          boxShadow: "0 -2px 10px rgba(20,23,31,0.05)",
+          display: "flex", justifyContent: "space-around", alignItems: "center",
+          padding: "8px 6px calc(env(safe-area-inset-bottom, 0px) + 8px)",
+        }}
+      >
+        {MODULES.map((m) => {
+          const c = CAT[m.id];
+          const isActive = active === m.id;
+          return (
+            <button
+              key={m.id}
+              onClick={() => setActive(m.id)}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                border: "none", background: "transparent", cursor: "pointer",
+                padding: "8px 10px", borderRadius: 12, flex: 1,
+                color: isActive ? c.main : T.inkFaint,
+                transition: "color 0.15s",
+              }}
+            >
+              <span
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 40, height: 30, borderRadius: 10,
+                  background: isActive ? c.soft : "transparent",
+                  transition: "background 0.15s",
+                }}
+              >
+                {ICONS[m.id]}
+              </span>
+              <span style={{ fontSize: 11.5, fontWeight: isActive ? 700 : 500, whiteSpace: "nowrap" }}>
+                {m.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<MishmarDashboard />);
+</script>
+</body>
+</html>
