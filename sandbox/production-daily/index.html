@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דוח ייצור יומי - סנדבוקס מִשְמָר</title>
+<style>
+  :root{
+    --primary:#B4620A;
+    --primary-soft:#FBEDDC;
+    --ink:#14171F;
+    --border:#E7E9ED;
+    --bg:#F7F8FA;
+    --ok:#0F9D58;
+    --bad:#D6483F;
+  }
+  *{box-sizing:border-box; font-family:Arial, sans-serif;}
+  body{background:var(--bg); margin:0; padding:20px; color:var(--ink);}
+  .wrap{max-width:600px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:20px;}
+  .sub{color:#6B7280; font-size:13px; margin-bottom:20px;}
+  .section{
+    background:#fff; border:1px solid var(--border); border-radius:14px;
+    padding:18px; margin-bottom:16px;
+  }
+  .section h3{margin:0 0 4px; font-size:15px; display:flex; align-items:center; gap:8px;}
+  .section .desc{color:#9CA3AF; font-size:12px; margin-bottom:12px;}
+  .row{display:flex; gap:8px; margin-bottom:8px; align-items:center;}
+  .row input{flex:1; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;}
+  .row .qty{max-width:90px;}
+  .row button{
+    background:var(--bad); color:#fff; border:none; border-radius:6px;
+    width:30px; height:34px; font-size:16px; cursor:pointer; flex-shrink:0;
+  }
+  .add-btn{
+    background:var(--primary-soft); color:var(--primary); border:none;
+    border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600;
+    cursor:pointer; margin-top:4px;
+  }
+  #sendBtn{
+    width:100%; background:var(--primary); color:#fff; border:none;
+    border-radius:10px; padding:14px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  #status_msg{margin-top:14px; font-size:13px; text-align:center; white-space:pre-wrap;}
+  .ok{color:var(--ok);}
+  .bad{color:var(--bad);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>📋 דוח ייצור יומי — סנדבוקס</h2>
+  <div class="sub">פרויקט בדיקה נפרד — לא קשור למערכת הייצור החיה</div>
+
+  <div class="section">
+    <h3>🧺 קיטים</h3>
+    <div class="desc">כמה קיטים הוכנו היום, לפי סוג</div>
+    <div id="kitsRows"></div>
+    <button class="add-btn" onclick="addRow('kits')">+ הוסף סוג קיט</button>
+  </div>
+
+  <div class="section">
+    <h3>🌀 ייצור מיקסרים (לפי מתכון)</h3>
+    <div class="desc">שם מתכון + כמות אצוות שנעשו</div>
+    <div id="mixersRows"></div>
+    <button class="add-btn" onclick="addRow('mixers')">+ הוסף מתכון</button>
+  </div>
+
+  <div class="section">
+    <h3>📦 אריזה</h3>
+    <div class="desc">שם מוצר + כמות אריזות שנעשו</div>
+    <div id="packagingRows"></div>
+    <button class="add-btn" onclick="addRow('packaging')">+ הוסף מוצר</button>
+  </div>
+
+  <div class="section">
+    <h3>🚚 משלוח</h3>
+    <div class="desc">שם מוצר + כמות אריזות שנשלחו</div>
+    <div id="shippedRows"></div>
+    <button class="add-btn" onclick="addRow('shipped')">+ הוסף מוצר שנשלח</button>
+  </div>
+
+  <button id="sendBtn">☁️ שלח דוח יומי</button>
+  <div id="status_msg"></div>
+</div>
+
+<script>
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwWvXIvp2dS8i-qCseApYC1vvA-mEzEoXLyeBvhBnATUazrQCyLKLxaovOgw2OlswDd/exec";
+
+const SECTIONS = {
+  kits:      { containerId: "kitsRows",      nameLabel: "סוג קיט",  qtyLabel: "כמות" },
+  mixers:    { containerId: "mixersRows",    nameLabel: "שם מתכון", qtyLabel: "אצוות" },
+  packaging: { containerId: "packagingRows", nameLabel: "שם מוצר",  qtyLabel: "אריזות" },
+  shipped:   { containerId: "shippedRows",   nameLabel: "שם מוצר",  qtyLabel: "נשלחו" },
+};
+
+function addRow(section){
+  const cfg = SECTIONS[section];
+  const container = document.getElementById(cfg.containerId);
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `
+    <input type="text" placeholder="${cfg.nameLabel}" class="name-input">
+    <input type="number" placeholder="${cfg.qtyLabel}" class="qty qty-input" min="0">
+    <button type="button" onclick="this.parentElement.remove()">×</button>
+  `;
+  container.appendChild(row);
+}
+
+// שורה ראשונה אוטומטית בכל חלק, לנוחות
+["kits","mixers","packaging","shipped"].forEach(s => addRow(s));
+
+function collectSection(section){
+  const cfg = SECTIONS[section];
+  const container = document.getElementById(cfg.containerId);
+  const rows = [];
+  container.querySelectorAll(".row").forEach(row => {
+    const name = row.querySelector(".name-input").value.trim();
+    const qty = row.querySelector(".qty-input").value;
+    if (name && qty) rows.push({ name, qty: Number(qty) });
+  });
+  return rows;
+}
+
+document.getElementById("sendBtn").addEventListener("click", async () => {
+  const msgEl = document.getElementById("status_msg");
+  const now = new Date();
+
+  const record = {
+    formType: "production_daily",
+    date: now.toISOString().slice(0,10),
+    time: now.toTimeString().slice(0,5),
+    status: "תקין",
+    kits: collectSection("kits"),
+    mixers: collectSection("mixers"),
+    packaging: collectSection("packaging"),
+    shipped: collectSection("shipped"),
+  };
+
+  msgEl.textContent = "שולח...";
+  msgEl.className = "";
+
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(record)
+    });
+    msgEl.textContent = "הדוח היומי נשלח בהצלחה ✔";
+    msgEl.className = "ok";
+  } catch (err) {
+    msgEl.textContent = "שגיאה בשליחה: " + err.message;
+    msgEl.className = "bad";
+  }
+});
+</script>
+</body>
+</html>
