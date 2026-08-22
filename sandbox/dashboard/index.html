@@ -236,6 +236,8 @@ function mapHaccpStatus(s) {
 
 function Overview({ plan }) {
   const { rows, loading, error } = useHaccpRecords(3);
+  const kits = useProductionLive("weighing");
+  const totalKits = kits.rows.reduce((sum, r) => sum + (Number(r["כמות קיטים סופי"]) || 0), 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,28 +266,29 @@ function Overview({ plan }) {
       </Card>
 
       {plan === "pro" ? (
-        <Card title="ניהול ייצור" subtitle="קו לישה 2 · משמרת בוקר" accent={CAT.production.main}>
-          <div style={{ marginBottom: 6 }}>
-            <div className="flex justify-between" style={{ fontSize: 13, color: T.inkSoft, marginBottom: 8 }}>
-              <span>יעד יומי</span>
-              <span style={{ color: T.ink, fontWeight: 600 }}>640 / 900 יח&apos;</span>
-            </div>
-            <ProgressBar pct={71} color={CAT.production.main} />
-          </div>
-          <Divider />
-          <Row label="בקרת שקילה אחרונה" right={<Badge status="approved" />} />
+        <Card title="ניהול ייצור" subtitle="נתונים חיים · טופס 1023" accent={CAT.production.main}>
+          {kits.loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+          {kits.error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {kits.error}</div>}
+          {!kits.loading && !kits.error && kits.rows.length === 0 && (
+            <div style={{ fontSize: 13, color: T.inkFaint }}>אין דיווחי קיטים היום.</div>
+          )}
+          {!kits.loading && !kits.error && kits.rows.length > 0 && (
+            <>
+              <Row label="סה״כ קיטים היום" right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalKits}</span>} />
+              <Divider />
+              <Row label="דיווחי קיטים" right={<span style={{ fontSize: 13, color: T.inkSoft }}>{kits.rows.length} רשומות</span>} />
+            </>
+          )}
         </Card>
       ) : (
         <LockedCard title="ניהול ייצור" blurb="מעקב קווי ייצור, יעדים יומיים ובקרת שקילה בזמן אמת." accent={CAT.production.main} soft={CAT.production.soft} />
       )}
 
       {plan === "pro" ? (
-        <Card title="משלוחים" subtitle="3 נהגים פעילים" accent={CAT.whatsapp.main}>
-          <Row label="משה · רכב 1" right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.whatsapp.main }}>12 דק&apos;</span>} />
-          <Divider />
-          <Row label="דוד · רכב 3" right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.whatsapp.main }}>27 דק&apos;</span>} />
-          <Divider />
-          <Row label="יוסי · רכב 2" right={<Badge status="approved" />} />
+        <Card title="משלוחים" subtitle="עדיין לא מחובר — מערכת נפרדת" accent={CAT.whatsapp.main}>
+          <div style={{ fontSize: 12.5, color: T.inkFaint }}>
+            נתוני משלוחים חיים ידרשו חיבור למערכת מעקב הנהגים/לקוחות הנפרדת.
+          </div>
         </Card>
       ) : (
         <LockedCard title="משלוחים, הזמנות ותזכורות" blurb="קליטת הזמנות אוטומטית, מעקב GPS חי ותזכורות ללקוחות." accent={CAT.whatsapp.main} soft={CAT.whatsapp.soft} />
