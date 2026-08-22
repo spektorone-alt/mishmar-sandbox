@@ -375,19 +375,19 @@ function Overview({ plan }) {
           {!kits.loading && !mixers.loading && !packaging.loading && !kits.error && !mixers.error && !packaging.error && (kits.rows.length > 0 || mixers.rows.length > 0 || packaging.rows.length > 0) && (
             <>
               <Row
-                label="סה״כ קיטים"
+                label="🧺 סה״כ קיטים"
                 sub={kitsDate || ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalKits}</span>}
               />
               <Divider />
               <Row
-                label="סה״כ מיקסרים"
+                label="🌀 סה״כ מיקסרים"
                 sub={mixersDate || ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
               />
               <Divider />
               <Row
-                label="סה״כ אריזות"
+                label="📦 סה״כ אריזות"
                 sub={packagingDate || ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalPackages}</span>}
               />
@@ -1007,7 +1007,7 @@ function MishmarDashboard() {
       </header>
 
       {/* תוכן ראשי — עם ריווח תחתון כדי לא להיחסם ע"י התפריט הקבוע */}
-      <main style={{ padding: "24px 20px", paddingBottom: 80, maxWidth: 640, margin: "0 auto", width: "100%" }}>
+      <main style={{ padding: "24px 20px", paddingBottom: 80, maxWidth: 960, margin: "0 auto", width: "100%" }}>
         {renderModule()}
       </main>
 
