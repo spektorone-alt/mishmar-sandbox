@@ -172,7 +172,7 @@ function ProgressBar({ pct, color }) {
 }
 
 // hook משותף — שולף רשומות אמיתיות מהסנדבוקס (לא נוגע במערכת החיה)
-function useLiveRecords(formType, limit) {
+function useLiveRecords(formType, limit, date) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -180,7 +180,8 @@ function useLiveRecords(formType, limit) {
   const load = () => {
     setLoading(true);
     setError(null);
-    fetch(HACCP_WEBHOOK_URL + "?formType=" + formType + "&limit=" + limit)
+    const dateParam = date ? "&from=" + date + "&to=" + date : "";
+    fetch(HACCP_WEBHOOK_URL + "?formType=" + formType + "&limit=" + limit + dateParam)
       .then((res) => res.json())
       .then((data) => {
         if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
@@ -193,14 +194,14 @@ function useLiveRecords(formType, limit) {
       });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [formType, limit, date]);
 
   return { rows, loading, error, reload: load };
 }
 
 // עבור תאימות אחורית עם קריאות קיימות במסך HACCP
-function useHaccpRecords(limit) {
-  return useLiveRecords("kabala_homre_gelem", limit);
+function useHaccpRecords(limit, date) {
+  return useLiveRecords("kabala_homre_gelem", limit, date);
 }
 
 // קריאה בלבד (GET) ממערכת הייצור החיה - formType כאן הוא weighing/kneading/packaging/plan
@@ -348,7 +349,8 @@ function Overview({ plan }) {
 }
 
 function HaccpModule({ plan }) {
-  const { rows: liveRows, loading, error, reload } = useHaccpRecords(10);
+  const [kabalaDate, setKabalaDate] = useState(""); // ריק = הכל (עד 10 אחרונים)
+  const { rows: liveRows, loading, error, reload } = useHaccpRecords(10, kabalaDate || null);
   const gmp = useLiveRecords("gmp_checklist", 5);
   const nc = useFsNcLive("nc");   // אי-התאמות - נתונים חיים אמיתיים (haccp-app)
   const fs = useFsNcLive("fs");   // בטיחות מזון - נתונים חיים אמיתיים (haccp-app)
@@ -370,12 +372,32 @@ function HaccpModule({ plan }) {
         subtitle="נתונים חיים מהגיליון · חלק מהחבילה החינמית"
         accent={CAT.haccp.main}
         action={
-          <button
-            onClick={() => { reload(); gmp.reload(); nc.reload(); fs.reload(); }}
-            style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
-          >
-            רענן
-          </button>
+          <div className="flex items-center gap-2">
+            {activeTab === "kabala" && (
+              <>
+                <input
+                  type="date"
+                  value={kabalaDate}
+                  onChange={(e) => setKabalaDate(e.target.value)}
+                  style={{ fontSize: 12, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 8px" }}
+                />
+                {kabalaDate && (
+                  <button
+                    onClick={() => setKabalaDate("")}
+                    style={{ fontSize: 12, color: T.inkSoft, background: T.bg, border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+                  >
+                    נקה
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              onClick={() => { reload(); gmp.reload(); nc.reload(); fs.reload(); }}
+              style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
+            >
+              רענן
+            </button>
+          </div>
         }
       >
         <div className="flex gap-2" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
@@ -427,7 +449,9 @@ function HaccpModule({ plan }) {
               </div>
             )}
             {!loading && !error && liveRows.length === 0 && (
-              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין רשומות עדיין בגיליון.</div>
+              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>
+                {kabalaDate ? `אין רשומות בתאריך ${kabalaDate}.` : "אין רשומות עדיין בגיליון."}
+              </div>
             )}
             {!loading && !error && liveRows.length > 0 && (
               <div style={{ overflowX: "auto" }}>
