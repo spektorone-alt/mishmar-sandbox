@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דיווח אי-התאמה - סנדבוקס מִשְמָר</title>
+<style>
+  :root{
+    --primary:#0E8A6D; --primary-soft:#E6F5F0;
+    --ink:#14171F; --border:#E7E9ED; --bg:#F7F8FA;
+    --ok:#0F9D58; --bad:#D6483F; --warn:#C87C1B;
+  }
+  *{box-sizing:border-box; font-family:Arial, sans-serif;}
+  body{background:var(--bg); margin:0; padding:20px; color:var(--ink);}
+  .card{max-width:520px; margin:0 auto; background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px;}
+  h2{margin:0 0 4px; font-size:20px;}
+  .sub{color:#6B7280; font-size:13px; margin-bottom:20px;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px;}
+  select, input, textarea{width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;}
+  .severity{display:flex; gap:8px;}
+  .severity button{flex:1; padding:9px; border:1px solid var(--border); border-radius:8px; background:#fff; font-size:13px; cursor:pointer;}
+  .severity button.active.low{background:var(--ok); color:#fff; border-color:var(--ok);}
+  .severity button.active.mid{background:var(--warn); color:#fff; border-color:var(--warn);}
+  .severity button.active.high{background:var(--bad); color:#fff; border-color:var(--bad);}
+  button#sendBtn{
+    width:100%; margin-top:20px; background:var(--primary); color:#fff;
+    border:none; border-radius:10px; padding:13px; font-size:15px; font-weight:700; cursor:pointer;
+  }
+  #status_msg{margin-top:14px; font-size:13px; text-align:center; white-space:pre-wrap;}
+  .ok-text{color:var(--ok);} .bad-text{color:var(--bad);}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>⚠️ דיווח אי-התאמה ובטיחות מזון</h2>
+  <div class="sub">פרויקט בדיקה נפרד — סנדבוקס מִשְמָר</div>
+
+  <label>קטגוריה</label>
+  <select id="category">
+    <option>סטיית טמפרטורה</option>
+    <option>זיהום צולב</option>
+    <option>תיעוד חסר</option>
+    <option>תקלת ציוד</option>
+    <option>הדברה / מזיקים</option>
+    <option>אחר</option>
+  </select>
+
+  <label>חומרת האירוע</label>
+  <div class="severity" id="severityBtns">
+    <button type="button" class="low" data-val="קל">קל</button>
+    <button type="button" class="mid" data-val="בינוני">בינוני</button>
+    <button type="button" class="high" data-val="חמור">חמור</button>
+  </div>
+
+  <label>תיאור האי-התאמה</label>
+  <textarea id="description" rows="3" placeholder="מה קרה בדיוק?"></textarea>
+
+  <label>פעולה מתקנת שננקטה</label>
+  <textarea id="action" rows="2" placeholder="אופציונלי"></textarea>
+
+  <label>סטטוס טיפול</label>
+  <select id="resolution">
+    <option value="פתוח">פתוח - ממתין לטיפול</option>
+    <option value="בטיפול">בטיפול</option>
+    <option value="סגור">סגור - טופל</option>
+  </select>
+
+  <label>דווח ע"י</label>
+  <input type="text" id="reporter" placeholder="שם מלא">
+
+  <button id="sendBtn">☁️ שלח דיווח</button>
+  <div id="status_msg"></div>
+</div>
+
+<script>
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwWvXIvp2dS8i-qCseApYC1vvA-mEzEoXLyeBvhBnATUazrQCyLKLxaovOgw2OlswDd/exec";
+
+let selectedSeverity = "קל";
+document.querySelectorAll("#severityBtns button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    selectedSeverity = btn.dataset.val;
+    document.querySelectorAll("#severityBtns button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+document.querySelector('#severityBtns button[data-val="קל"]').classList.add("active");
+
+document.getElementById("sendBtn").addEventListener("click", async () => {
+  const msgEl = document.getElementById("status_msg");
+  const now = new Date();
+
+  const resolution = document.getElementById("resolution").value;
+  // סטטוס כללי לדשבורד: אם עדיין פתוח -> ממתין, אם סגור -> תקין, נחשב כ"לא תקין" רק אם חמור ופתוח
+  let status = "תקין";
+  if (resolution !== "סגור") status = "לא תקין";
+
+  const record = {
+    formType: "non_conformance",
+    date: now.toISOString().slice(0,10),
+    time: now.toTimeString().slice(0,5),
+    status,
+    category: document.getElementById("category").value,
+    severity: selectedSeverity,
+    description: document.getElementById("description").value,
+    action: document.getElementById("action").value,
+    resolution,
+    reporter: document.getElementById("reporter").value
+  };
+
+  msgEl.textContent = "שולח...";
+  msgEl.className = "";
+
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(record)
+    });
+    msgEl.textContent = "הדיווח נשלח בהצלחה ✔";
+    msgEl.className = "ok-text";
+  } catch (err) {
+    msgEl.textContent = "שגיאה בשליחה: " + err.message;
+    msgEl.className = "bad-text";
+  }
+});
+</script>
+</body>
+</html>
