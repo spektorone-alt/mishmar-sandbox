@@ -1026,6 +1026,11 @@ function OrdersModule() {
       {sourceFile && (
         <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 10 }}>📄 מקור: {sourceFile}</div>
       )}
+      {!loading && !error && rows.length > 0 && (
+        <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, marginBottom: 12 }}>
+          משלוח ליום {rows[0]["יום משלוח"] || "-"} ({rows[0]["תאריך משלוח"] || "-"})
+        </div>
+      )}
       {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען נתונים...</div>}
       {error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {error}</div>}
       {!loading && !error && rows.length === 0 && (
@@ -1038,7 +1043,6 @@ function OrdersModule() {
           <Row
             label={r["שם לקוח"] || "(ללא שם)"}
             sub={`${r["פריטים בהזמנה"] || ""} · ${r["טלפון"] || ""}`}
-            right={<span style={{ fontSize: 12.5, color: T.inkSoft }}>{r["זמן אישור"] || ""}</span>}
           />
           {i < arr.length - 1 && <Divider />}
         </React.Fragment>
