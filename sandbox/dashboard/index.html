@@ -310,11 +310,13 @@ function Overview({ plan }) {
 function HaccpModule({ plan }) {
   const { rows: liveRows, loading, error, reload } = useHaccpRecords(10);
   const gmp = useLiveRecords("gmp_checklist", 5);
+  const nc = useLiveRecords("non_conformance", 20);
 
   const [activeTab, setActiveTab] = useState("kabala");
   const TABS = [
     { id: "kabala", label: "📥 קבלת חומרי גלם", count: liveRows.length },
     { id: "gmp", label: "✅ בדיקות GMP", count: gmp.rows.length },
+    { id: "nc", label: "⚠️ אי-התאמות", count: nc.rows.length },
   ];
 
   const proRows = [
@@ -332,7 +334,7 @@ function HaccpModule({ plan }) {
         accent={CAT.haccp.main}
         action={
           <button
-            onClick={() => { reload(); gmp.reload(); }}
+            onClick={() => { reload(); gmp.reload(); nc.reload(); }}
             style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
           >
             רענן
@@ -457,10 +459,37 @@ function HaccpModule({ plan }) {
             )}
           </>
         )}
+
+        {activeTab === "nc" && (
+          <>
+            {nc.loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
+            {nc.error && <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>שגיאה: {nc.error}</div>}
+            {!nc.loading && !nc.error && nc.rows.length === 0 && (
+              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין אי-התאמות פתוחות. 🎉</div>
+            )}
+            {!nc.loading && !nc.error && nc.rows.slice().reverse().map((r, i, arr) => (
+              <React.Fragment key={i}>
+                <Row
+                  label={`${r.category || "(ללא קטגוריה)"} · ${r.severity || ""}`}
+                  sub={`${r.date} · דווח ע"י ${r.reporter || "-"} · ${r.description || ""}`}
+                  right={
+                    <Badge
+                      status={
+                        r.resolution === "סגור" ? "approved" :
+                        r.severity === "חמור" ? "failed" : "pending"
+                      }
+                    />
+                  }
+                />
+                {i < arr.length - 1 && <Divider />}
+              </React.Fragment>
+            ))}
+          </>
+        )}
       </Card>
 
       {plan !== "pro" && (
-        <LockedCard title="אי-התאמות ובקרת ייצור מלאה" blurb="דיווח אי-התאמות, בקרת לישה, בקרת אריזה וטרייסביליות מלאה זמינים בחבילה בתשלום." accent={CAT.haccp.main} soft={CAT.haccp.soft} />
+        <LockedCard title="בקרת ייצור מלאה" blurb="בקרת לישה, בקרת אריזה וטרייסביליות מלאה זמינים בחבילה בתשלום." accent={CAT.haccp.main} soft={CAT.haccp.soft} />
       )}
     </div>
   );
