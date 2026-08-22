@@ -208,6 +208,7 @@ function useHaccpRecords(limit, date) {
 // שימו לב: המערכת החיה מחזירה מערך פשוט [...], לא {ok, records}
 function useProductionLive(formType, date) {
   const [rows, setRows] = useState([]);
+  const [sourceFile, setSourceFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -219,7 +220,17 @@ function useProductionLive(formType, date) {
       .then((res) => res.json())
       .then((data) => {
         if (data && data.status === "error") throw new Error(data.message);
-        setRows(Array.isArray(data) ? data : []);
+        // תמיכה גם במבנה החדש {sourceFile, records} וגם בישן (מערך פשוט), למקרה שהשרת עוד לא עודכן
+        if (Array.isArray(data)) {
+          setRows(data);
+          setSourceFile(null);
+        } else if (data && Array.isArray(data.records)) {
+          setRows(data.records);
+          setSourceFile(data.sourceFile || null);
+        } else {
+          setRows([]);
+          setSourceFile(null);
+        }
         setLoading(false);
       })
       .catch((err) => {
@@ -230,7 +241,7 @@ function useProductionLive(formType, date) {
 
   useEffect(() => { load(); }, [formType, date]);
 
-  return { rows, loading, error, reload: load };
+  return { rows, sourceFile, loading, error, reload: load };
 }
 
 // קריאה בלבד (GET) מיומן בטיחות מזון/אי-התאמות החי (haccp-app)
@@ -703,6 +714,9 @@ function ProductionModule() {
 
           {activeTab === "kits" && (
             <SubSection icon="🧺" title={selectedDate ? "קיטים (חומר גלם למיקסר)" : "קיטים (דוח אחרון זמין)"} empty={batches.length === 0}>
+              {kits.sourceFile && (
+                <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 10 }}>📄 מקור: {kits.sourceFile}</div>
+              )}
               {batches.map((b, i) => (
                 <React.Fragment key={b.batchId}>
                   <Row
@@ -718,6 +732,9 @@ function ProductionModule() {
 
           {activeTab === "mixers" && (
             <SubSection icon="🌀" title={selectedDate ? "ייצור מיקסרים (בקרת לישה)" : "ייצור מיקסרים (דוח אחרון זמין)"} empty={mixers.rows.length === 0}>
+              {mixers.sourceFile && (
+                <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 10 }}>📄 מקור: {mixers.sourceFile}</div>
+              )}
               {mixerTotals.length > 0 && (
                 <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px dashed ${T.border}` }}>
                   <Row
@@ -750,6 +767,9 @@ function ProductionModule() {
 
           {activeTab === "packaging" && (
             <SubSection icon="📦" title={selectedDate ? "אריזה שנעשתה" : "אריזה (דוח אחרון זמין)"} empty={packaging.rows.length === 0}>
+              {packaging.sourceFile && (
+                <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 10 }}>📄 מקור: {packaging.sourceFile}</div>
+              )}
               {packaging.rows.map((r, i) => (
                 <React.Fragment key={i}>
                   <Row label={r["סוג הבצק"] || "(ללא שם)"} sub={`עגלה #${r["מס' עגלה"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות אריזות סופית"]} אריזות</span>} />
