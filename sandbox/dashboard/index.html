@@ -484,29 +484,18 @@ function HaccpModule({ plan }) {
               </div>
             )}
             {!loading && !error && liveRows.length > 0 && (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr>
-                      {["תאריך", "ספק", "חומר גלם", "אצווה", "בודק", "סטטוס"].map((h) => (
-                        <th key={h} style={{ textAlign: "right", fontSize: 12, color: T.inkFaint, fontWeight: 600, padding: "0 0 10px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {liveRows.map((r, i) => (
-                      <tr key={i}>
-                        <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.date} {r.time}</td>
-                        <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.supplier}</td>
-                        <td style={{ padding: "12px 0", fontSize: 13.5, color: T.ink, fontWeight: 500, borderBottom: `1px solid ${T.border}` }}>{r.material}</td>
-                        <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.batch}</td>
-                        <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.inspector}</td>
-                        <td style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}` }}><Badge status={mapHaccpStatus(r.status)} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                {liveRows.map((r, i, arr) => (
+                  <React.Fragment key={i}>
+                    <Row
+                      label={r.material || "(ללא שם)"}
+                      sub={`${shortDate(r.date)} ${r.time || ""} · ${r.supplier || "-"} · אצווה ${r.batch || "-"}`}
+                      right={<Badge status={mapHaccpStatus(r.status)} />}
+                    />
+                    {i < arr.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </>
             )}
           </>
         )}
