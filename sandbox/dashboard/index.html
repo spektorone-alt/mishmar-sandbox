@@ -329,21 +329,28 @@ function HaccpModule({ plan }) {
 }
 
 function ProductionModule() {
-  const { rows, loading, error, reload } = useLiveRecords("production_line", 20);
+  const { rows, loading, error, reload } = useLiveRecords("production_daily", 5);
+  const latest = rows.length > 0 ? rows[0] : null;
 
-  // לוקח את הדיווח האחרון לכל קו ייצור בנפרד
-  const latestByLine = {};
-  rows.forEach((r) => {
-    if (!latestByLine[r.line] || r.date + r.time > latestByLine[r.line].date + latestByLine[r.line].time) {
-      latestByLine[r.line] = r;
-    }
-  });
-  const lines = Object.values(latestByLine);
+  const SubSection = ({ icon, title, items, unit }) => (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{icon} {title}</div>
+      {(!items || items.length === 0) && (
+        <div style={{ fontSize: 12.5, color: T.inkFaint }}>אין נתונים</div>
+      )}
+      {items && items.map((it, i) => (
+        <React.Fragment key={i}>
+          <Row label={it.name} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{it.qty} {unit}</span>} />
+          {i < items.length - 1 && <Divider />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
 
   return (
     <Card
-      title="קווי ייצור — נתונים חיים"
-      subtitle="סנדבוקס נפרד · דיווח עצמאי (לא tofes-1/2/3)"
+      title="דוח ייצור יומי — נתונים חיים"
+      subtitle={latest ? `עודכן: ${latest.date} ${latest.time}` : "סנדבוקס נפרד · לא tofes-1/2/3"}
       accent={CAT.production.main}
       action={
         <button
@@ -356,24 +363,16 @@ function ProductionModule() {
     >
       {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען נתונים...</div>}
       {error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {error}</div>}
-      {!loading && !error && lines.length === 0 && (
-        <div style={{ fontSize: 13, color: T.inkFaint }}>אין עדיין דיווחי ייצור בסנדבוקס.</div>
+      {!loading && !error && !latest && (
+        <div style={{ fontSize: 13, color: T.inkFaint }}>אין עדיין דוחות ייצור יומיים בסנדבוקס.</div>
       )}
-      {!loading && !error && lines.length > 0 && (
-        <div className="flex flex-col gap-5">
-          {lines.map((l) => (
-            <div key={l.line}>
-              <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{l.line}</span>
-                <span style={{ fontSize: 13, color: T.inkSoft }}>{l.actual} / {l.target} יח&apos;</span>
-              </div>
-              <ProgressBar
-                pct={Math.min(100, (Number(l.actual) / Number(l.target || 1)) * 100)}
-                color={l.status === "תקין" ? T.success : CAT.production.main}
-              />
-            </div>
-          ))}
-        </div>
+      {!loading && !error && latest && (
+        <>
+          <SubSection icon="🧺" title="קיטים" items={latest.kits} unit="יח'" />
+          <SubSection icon="🌀" title="ייצור מיקסרים (מתכונים)" items={latest.mixers} unit="אצוות" />
+          <SubSection icon="📦" title="אריזה" items={latest.packaging} unit="אריזות" />
+          <SubSection icon="🚚" title="משלוח" items={latest.shipped} unit="נשלחו" />
+        </>
       )}
     </Card>
   );
