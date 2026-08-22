@@ -798,7 +798,11 @@ function ProductionModule() {
               )}
               {packaging.rows.map((r, i) => (
                 <React.Fragment key={i}>
-                  <Row label={r["סוג הבצק"] || "(ללא שם)"} sub={`עגלה #${r["מס' עגלה"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות אריזות סופית"]} אריזות</span>} />
+                  <Row
+                    label={r["סוג הבצק"] || "(ללא שם)"}
+                    sub={`עגלה #${r["מס' עגלה"] || "-"} · כדור ${r["כמות יחידות באריזה"] || "-"} · משקל כדור ${r["משקל יחידה"] || "-"} גר'`}
+                    right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות אריזות סופית"]} אריזות</span>}
+                  />
                   {i < packaging.rows.length - 1 && <Divider />}
                 </React.Fragment>
               ))}
