@@ -290,6 +290,8 @@ function mapHaccpStatus(s) {
 function Overview({ plan }) {
   const { rows, loading, error } = useHaccpRecords(3);
   const kits = useProductionLive("weighing");
+  const mixers = useProductionLive("kneading");
+
   // סופרים רק אצווה ייחודית אחת (לפי מס' אצווה של חו"ג), לא כל שורת מרכיב בנפרד
   const seenBatches = {};
   let totalKits = 0;
@@ -300,6 +302,15 @@ function Overview({ plan }) {
       totalKits += Number(r["כמות קיטים סופי"]) || 0;
     }
   });
+
+  // מחלץ את התאריך (dd-MM-yyyy) מתוך שם קובץ המקור, לתצוגה לצד המספרים
+  const extractFileDate = (name) => {
+    if (!name) return null;
+    const m = name.match(/(\d{2}-\d{2}-\d{4})$/);
+    return m ? m[1] : null;
+  };
+  const kitsDate = extractFileDate(kits.sourceFile);
+  const mixersDate = extractFileDate(mixers.sourceFile);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -329,16 +340,24 @@ function Overview({ plan }) {
 
       {plan === "pro" ? (
         <Card title="ניהול ייצור" subtitle="נתונים חיים · טופס 1023" accent={CAT.production.main}>
-          {kits.loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
-          {kits.error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {kits.error}</div>}
-          {!kits.loading && !kits.error && kits.rows.length === 0 && (
-            <div style={{ fontSize: 13, color: T.inkFaint }}>אין דיווחי קיטים היום.</div>
+          {(kits.loading || mixers.loading) && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+          {(kits.error || mixers.error) && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {kits.error || mixers.error}</div>}
+          {!kits.loading && !mixers.loading && !kits.error && !mixers.error && kits.rows.length === 0 && mixers.rows.length === 0 && (
+            <div style={{ fontSize: 13, color: T.inkFaint }}>אין עדיין דיווחי ייצור.</div>
           )}
-          {!kits.loading && !kits.error && kits.rows.length > 0 && (
+          {!kits.loading && !mixers.loading && !kits.error && !mixers.error && (kits.rows.length > 0 || mixers.rows.length > 0) && (
             <>
-              <Row label="סה״כ קיטים היום" right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalKits}</span>} />
+              <Row
+                label="סה״כ קיטים"
+                sub={kitsDate || ""}
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalKits}</span>}
+              />
               <Divider />
-              <Row label="אצוות קיטים" right={<span style={{ fontSize: 13, color: T.inkSoft }}>{Object.keys(seenBatches).length} אצוות</span>} />
+              <Row
+                label="סה״כ מיקסרים"
+                sub={mixersDate || ""}
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
+              />
             </>
           )}
         </Card>
