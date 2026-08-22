@@ -36,7 +36,7 @@ const T = {
 
 // צבע ייחודי לכל קטגוריה — מזהה חזותי שעוזר לדעת מיד באיזה מודול נמצאים
 const CAT = {
-  overview: { main: "#3454D1", soft: "#EDF1FD" },
+  overview: { main: "#B71C1C", soft: "#FBEAEA" },
   haccp:    { main: "#0E8A6D", soft: "#E6F5F0" },
   production: { main: "#B4620A", soft: "#FBEDDC" },
   whatsapp: { main: "#6D4FD1", soft: "#EFECFB" },
@@ -902,10 +902,8 @@ function MishmarDashboard() {
       >
         <div className="flex justify-between items-center flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: T.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-              </svg>
+            <div style={{ width: 38, height: 38, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: `1px solid ${T.border}` }}>
+              <img src="ader-logo.jpg" alt="אדר בצקים" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: 19, letterSpacing: "-0.01em", lineHeight: 1.1 }}>מִשְמָר</div>
