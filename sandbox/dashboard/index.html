@@ -277,7 +277,10 @@ function useFsNcLive(type, date) {
 function shortDate(v) {
   if (!v) return "";
   const s = String(v);
-  return s.length >= 10 ? s.slice(0, 10) : s;
+  const ymd = s.length >= 10 ? s.slice(0, 10) : s;
+  // ממיר yyyy-MM-dd לפורמט יום-חודש-שנה (DD-MM-YYYY)
+  const m = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : ymd;
 }
 
 function mapHaccpStatus(s) {
