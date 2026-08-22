@@ -323,6 +323,12 @@ function Overview({ plan }) {
   const haccpLoading = loading || gmp.loading || nc.loading || fs.loading;
   const haccpError = error || gmp.error || nc.error || fs.error;
 
+  // תאריך העדכון האחרון לכל קטגוריית HACCP, לתצוגה מתחת לכל שורה
+  const kabalaLastDate = rows.length > 0 ? shortDate(rows[0].date) : null;
+  const gmpLastDate = gmp.rows.length > 0 ? shortDate(gmp.rows[0].date) : null;
+  const ncLastDate = nc.rows.length > 0 ? shortDate(nc.rows[nc.rows.length - 1]["תאריך"]) : null;
+  const fsLastDate = fs.rows.length > 0 ? shortDate(fs.rows[fs.rows.length - 1]["תאריך"]) : null;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card title="HACCP ואיכות" subtitle="נתונים חיים מהגיליון" accent={CAT.haccp.main}>
@@ -332,16 +338,19 @@ function Overview({ plan }) {
           <>
             <Row
               label="📥 קבלת חומרי גלם"
+              sub={kabalaLastDate ? `מעודכן ל-${kabalaLastDate}` : ""}
               right={<span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{rows.length} רשומות</span>}
             />
             <Divider />
             <Row
               label="✅ בדיקות GMP"
+              sub={gmpLastDate ? `מעודכן ל-${gmpLastDate}` : ""}
               right={<span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{gmp.rows.length} בדיקות</span>}
             />
             <Divider />
             <Row
               label="⚠️ אי-התאמות"
+              sub={ncLastDate ? `מעודכן ל-${ncLastDate}` : ""}
               right={
                 openNc > 0 ? (
                   <span style={{ fontSize: 13, fontWeight: 700, color: T.danger }}>{openNc} פתוחות</span>
@@ -353,6 +362,7 @@ function Overview({ plan }) {
             <Divider />
             <Row
               label="🛡️ בטיחות מזון"
+              sub={fsLastDate ? `מעודכן ל-${fsLastDate}` : ""}
               right={
                 fsDeviations > 0 ? (
                   <span style={{ fontSize: 13, fontWeight: 700, color: T.danger }}>{fsDeviations} חריגות</span>
@@ -376,19 +386,19 @@ function Overview({ plan }) {
             <>
               <Row
                 label="🧺 סה״כ קיטים"
-                sub={kitsDate || ""}
+                sub={kitsDate ? `מעודכן ל-${kitsDate}` : ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalKits}</span>}
               />
               <Divider />
               <Row
                 label="🌀 סה״כ מיקסרים"
-                sub={mixersDate || ""}
+                sub={mixersDate ? `מעודכן ל-${mixersDate}` : ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
               />
               <Divider />
               <Row
                 label="📦 סה״כ אריזות"
-                sub={packagingDate || ""}
+                sub={packagingDate ? `מעודכן ל-${packagingDate}` : ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalPackages}</span>}
               />
             </>
