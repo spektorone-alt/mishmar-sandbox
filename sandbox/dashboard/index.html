@@ -865,7 +865,7 @@ function ProductionModule() {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1.5" style={{ maxWidth: 340 }}>
                     <div className="flex justify-between">
                       <span style={{ fontSize: 12.5, color: T.inkSoft }}>כמות יח&apos; באריזה</span>
                       <span style={{ fontSize: 12.5, fontWeight: 600, color: T.ink }}>{r["כמות יחידות באריזה"] || "-"} יח&apos;</span>
@@ -1007,7 +1007,7 @@ function MishmarDashboard() {
       </header>
 
       {/* תוכן ראשי — עם ריווח תחתון כדי לא להיחסם ע"י התפריט הקבוע */}
-      <main style={{ padding: "24px 20px", paddingBottom: 80 }}>
+      <main style={{ padding: "24px 20px", paddingBottom: 80, maxWidth: 640, margin: "0 auto", width: "100%" }}>
         {renderModule()}
       </main>
 
