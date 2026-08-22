@@ -294,6 +294,7 @@ function Overview({ plan }) {
   const fs = useFsNcLive("fs");
   const kits = useProductionLive("weighing");
   const mixers = useProductionLive("kneading");
+  const packaging = useProductionLive("packaging");
 
   // סופרים רק אצווה ייחודית אחת (לפי מס' אצווה של חו"ג), לא כל שורת מרכיב בנפרד
   const seenBatches = {};
@@ -314,6 +315,8 @@ function Overview({ plan }) {
   };
   const kitsDate = extractFileDate(kits.sourceFile);
   const mixersDate = extractFileDate(mixers.sourceFile);
+  const packagingDate = extractFileDate(packaging.sourceFile);
+  const totalPackages = packaging.rows.reduce((sum, r) => sum + (Number(r["כמות אריזות סופית"]) || 0), 0);
 
   const openNc = nc.rows.filter((r) => r["סטטוס"] !== "נסגר" && r["סטטוס"] !== "טופל").length;
   const fsDeviations = fs.rows.filter((r) => r["חריגה"] === "כן").length;
@@ -364,12 +367,12 @@ function Overview({ plan }) {
 
       {plan === "pro" ? (
         <Card title="ניהול ייצור" subtitle="נתונים חיים · טופס 1023" accent={CAT.production.main}>
-          {(kits.loading || mixers.loading) && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
-          {(kits.error || mixers.error) && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {kits.error || mixers.error}</div>}
-          {!kits.loading && !mixers.loading && !kits.error && !mixers.error && kits.rows.length === 0 && mixers.rows.length === 0 && (
+          {(kits.loading || mixers.loading || packaging.loading) && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+          {(kits.error || mixers.error || packaging.error) && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {kits.error || mixers.error || packaging.error}</div>}
+          {!kits.loading && !mixers.loading && !packaging.loading && !kits.error && !mixers.error && !packaging.error && kits.rows.length === 0 && mixers.rows.length === 0 && packaging.rows.length === 0 && (
             <div style={{ fontSize: 13, color: T.inkFaint }}>אין עדיין דיווחי ייצור.</div>
           )}
-          {!kits.loading && !mixers.loading && !kits.error && !mixers.error && (kits.rows.length > 0 || mixers.rows.length > 0) && (
+          {!kits.loading && !mixers.loading && !packaging.loading && !kits.error && !mixers.error && !packaging.error && (kits.rows.length > 0 || mixers.rows.length > 0 || packaging.rows.length > 0) && (
             <>
               <Row
                 label="סה״כ קיטים"
@@ -381,6 +384,12 @@ function Overview({ plan }) {
                 label="סה״כ מיקסרים"
                 sub={mixersDate || ""}
                 right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
+              />
+              <Divider />
+              <Row
+                label="סה״כ אריזות"
+                sub={packagingDate || ""}
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalPackages}</span>}
               />
             </>
           )}
