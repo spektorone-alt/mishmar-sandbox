@@ -826,6 +826,12 @@ function ProductionModule() {
                     </span>
                   </div>
 
+                  <div style={{ marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>
+                      סך מוצרים שנארזו: {(Number(r["כמות יחידות באריזה"]) || 0) * (Number(r["כמות אריזות סופית"]) || 0)} יח&apos;
+                    </span>
+                  </div>
+
                   <div className="flex flex-col gap-1.5">
                     <div className="flex justify-between">
                       <span style={{ fontSize: 12.5, color: T.inkSoft }}>כמות יח&apos; באריזה</span>
