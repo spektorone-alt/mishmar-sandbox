@@ -40,6 +40,7 @@ const CAT = {
   haccp:    { main: "#0E8A6D", soft: "#E6F5F0" },
   production: { main: "#B4620A", soft: "#FBEDDC" },
   whatsapp: { main: "#6D4FD1", soft: "#EFECFB" },
+  orders: { main: "#0E7490", soft: "#E0F5F9" },
 };
 
 // חיבור חי לטופס "בקרת קבלת חומרי גלם" — פרויקט הסנדבוקס (לא נוגע במערכת החיה)
@@ -63,7 +64,8 @@ const MODULES = [
   { id: "overview", label: "סקירה כללית" },
   { id: "haccp", label: "HACCP ואיכות" },
   { id: "production", label: "ניהול ייצור" },
-  { id: "whatsapp", label: "משלוחים והזמנות" },
+  { id: "orders", label: "ניהול הזמנות" },
+  { id: "whatsapp", label: "משלוחים" },
 ];
 
 const ICONS = {
@@ -78,6 +80,9 @@ const ICONS = {
   ),
   whatsapp: (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 20l1.4-4.1A8 8 0 1112 20a7.9 7.9 0 01-4-1.1L4 20z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>
+  ),
+  orders: (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M6 3h12l1 5H5l1-5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M4 8h16l-1.2 11.2a2 2 0 01-2 1.8H7.2a2 2 0 01-2-1.8L4 8z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/><path d="M9 12v3M15 12v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
   ),
 };
 
@@ -916,10 +921,6 @@ function WhatsappModule() {
     { name: "דוד · רכב 3", dest: "מאפיית הכיכר, אשקלון", eta: "27 דק'", status: "pending" },
     { name: "יוסי · רכב 2", dest: "מלון דן, אשדוד", eta: "הגיע", status: "approved" },
   ];
-  const orders = [
-    { client: "מאפיית הכיכר", items: "20 ק\"ג בצק פיצה", time: "09:14", status: "approved" },
-    { client: "סופרמרקט העיר", items: "35 ק\"ג בצק לחם", time: "08:52", status: "pending" },
-  ];
   const reminders = [
     { text: "תזכורת חידוש הזמנה שבועית — מלון דן", time: "מחר 07:00" },
     { text: "תזכורת תשלום — מאפיית הכיכר", time: "היום 16:00" },
@@ -942,16 +943,7 @@ function WhatsappModule() {
         </div>
       </Card>
 
-      <Card title="קליטת הזמנות" subtitle="התקבלו אוטומטית דרך הבוט" accent={CAT.whatsapp.main}>
-        {orders.map((o, i) => (
-          <React.Fragment key={o.client}>
-            <Row label={o.client} sub={o.items} right={<Badge status={o.status} />} />
-            {i < orders.length - 1 && <Divider />}
-          </React.Fragment>
-        ))}
-      </Card>
-
-      <Card title="תזכורות אוטומטיות" subtitle="ללקוחות ולנהגים" accent={CAT.whatsapp.main}>
+      <Card title="תזכורות אוטומטיות" subtitle="ללקוחות ולנהגים" accent={CAT.whatsapp.main} style={{ gridColumn: "1 / -1" }}>
         {reminders.map((r, i) => (
           <React.Fragment key={r.text}>
             <Row label={r.text} right={<span style={{ fontSize: 12.5, color: T.inkFaint }}>{r.time}</span>} />
@@ -960,6 +952,24 @@ function WhatsappModule() {
         ))}
       </Card>
     </div>
+  );
+}
+
+function OrdersModule() {
+  const orders = [
+    { client: "מאפיית הכיכר", items: "20 ק\"ג בצק פיצה", time: "09:14", status: "approved" },
+    { client: "סופרמרקט העיר", items: "35 ק\"ג בצק לחם", time: "08:52", status: "pending" },
+  ];
+
+  return (
+    <Card title="קליטת הזמנות" subtitle="התקבלו אוטומטית דרך הבוט" accent={CAT.orders.main}>
+      {orders.map((o, i) => (
+        <React.Fragment key={o.client}>
+          <Row label={o.client} sub={o.items} right={<Badge status={o.status} />} />
+          {i < orders.length - 1 && <Divider />}
+        </React.Fragment>
+      ))}
+    </Card>
   );
 }
 
@@ -976,13 +986,16 @@ function MishmarDashboard() {
       return plan === "pro" ? <ProductionModule /> : (
         <LockedCard title="ניהול ייצור" blurb="מעקב קווי ייצור, יעדים יומיים ובקרת שקילה בזמן אמת — זמין בחבילה המלאה." accent={CAT.production.main} soft={CAT.production.soft} />
       );
+    if (active === "orders")
+      return plan === "pro" ? <OrdersModule /> : (
+        <LockedCard title="ניהול הזמנות" blurb="קליטת הזמנות אוטומטית מלקוחות דרך הבוט — זמין בחבילה המלאה." accent={CAT.orders.main} soft={CAT.orders.soft} />
+      );
     if (active === "whatsapp")
       return plan === "pro" ? <WhatsappModule /> : (
-        <LockedCard title="משלוחים, הזמנות ותזכורות" blurb="קליטת הזמנות אוטומטית מלקוחות, מעקב GPS חי ותזכורות אוטומטיות — זמין בחבילה המלאה." accent={CAT.whatsapp.main} soft={CAT.whatsapp.soft} />
+        <LockedCard title="משלוחים ותזכורות" blurb="מעקב GPS חי אחר נהגים ותזכורות אוטומטיות — זמין בחבילה המלאה." accent={CAT.whatsapp.main} soft={CAT.whatsapp.soft} />
       );
     return <Overview plan={plan} />;
   };
-
 
   return (
     <div dir="rtl" style={{ minHeight: "100vh", background: T.bg, color: T.ink }}>
