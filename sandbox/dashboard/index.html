@@ -414,8 +414,15 @@ function ProductionModule() {
 
   const reloadAll = () => { kits.reload(); mixers.reload(); packaging.reload(); };
 
+  const [activeTab, setActiveTab] = useState("kits");
+  const TABS = [
+    { id: "kits", label: "🧺 קיטים", count: batches.length },
+    { id: "mixers", label: "🌀 מיקסרים", count: mixers.rows.length },
+    { id: "packaging", label: "📦 אריזה", count: packaging.rows.length },
+  ];
+
   const SubSection = ({ icon, title, children, empty }) => (
-    <div style={{ marginBottom: 18 }}>
+    <div>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{icon} {title}</div>
       {empty ? <div style={{ fontSize: 12.5, color: T.inkFaint }}>אין נתונים ליום זה</div> : children}
     </div>
@@ -456,59 +463,105 @@ function ProductionModule() {
 
       {!loading && !error && (
         <>
-          <SubSection icon="🧺" title={selectedDate ? "קיטים (חומר גלם למיקסר)" : "קיטים שהוכנו היום"} empty={batches.length === 0}>
-            {batches.map((b, i) => (
-              <React.Fragment key={b.batchId}>
-                <Row
-                  label={`${b.recipe} · אצווה ${b.batchId}`}
-                  sub={`הוכנס למיקסר ${b.mixerTime || "-"} · ${b.ingredientCount} מרכיבים`}
-                  right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{b.qty} קיטים</span>}
-                />
-                {i < batches.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </SubSection>
+          <div className="flex gap-2" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
+            {TABS.map((t) => {
+              const isActive = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  style={{
+                    fontSize: 13,
+                    fontWeight: isActive ? 700 : 500,
+                    color: isActive ? CAT.production.main : T.inkSoft,
+                    background: "transparent",
+                    border: "none",
+                    borderBottom: isActive ? `2px solid ${CAT.production.main}` : "2px solid transparent",
+                    padding: "8px 4px",
+                    marginBottom: -2,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {t.label}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: isActive ? "#fff" : T.inkFaint,
+                      background: isActive ? CAT.production.main : T.bg,
+                      borderRadius: 999,
+                      padding: "1px 7px",
+                    }}
+                  >
+                    {t.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-          <SubSection icon="🌀" title={selectedDate ? "ייצור מיקסרים (בקרת לישה)" : "ייצור מיקסרים היום (בקרת לישה)"} empty={mixers.rows.length === 0}>
-            {mixerTotals.length > 0 && (
-              <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px dashed ${T.border}` }}>
-                <Row
-                  label="סה״כ מיקסרים (לישות)"
-                  right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
-                />
-                <div style={{ fontSize: 12, color: T.inkFaint, margin: "8px 0 6px" }}>לפי מוצר:</div>
-                {mixerTotals.map((m, i) => (
+          {activeTab === "kits" && (
+            <SubSection icon="🧺" title={selectedDate ? "קיטים (חומר גלם למיקסר)" : "קיטים שהוכנו היום"} empty={batches.length === 0}>
+              {batches.map((b, i) => (
+                <React.Fragment key={b.batchId}>
                   <Row
-                    key={i}
-                    label={m.name}
-                    sub={`${m.count} לישות`}
-                    right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{m.weight} ק״ג</span>}
+                    label={`${b.recipe} · אצווה ${b.batchId}`}
+                    sub={`הוכנס למיקסר ${b.mixerTime || "-"} · ${b.ingredientCount} מרכיבים`}
+                    right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{b.qty} קיטים</span>}
                   />
-                ))}
-              </div>
-            )}
-            {mixers.rows.map((r, i) => (
-              <React.Fragment key={i}>
-                <Row
-                  label={`${r["מוצר"] || "(ללא שם)"} · לישה #${r["מספר לישה"] || "-"}`}
-                  sub={`אצווה ${r["מס' אצווה מנה"] || "-"} · ${r["זמן לישה"] || ""} · ${r["תקין/לא תקין"] || ""}`}
-                  right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["משקל בצק"]} ק״ג</span>}
-                />
-                {i < mixers.rows.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </SubSection>
+                  {i < batches.length - 1 && <Divider />}
+                </React.Fragment>
+              ))}
+            </SubSection>
+          )}
 
-          <SubSection icon="📦" title={selectedDate ? "אריזה שנעשתה" : "אריזה שנעשתה היום"} empty={packaging.rows.length === 0}>
-            {packaging.rows.map((r, i) => (
-              <React.Fragment key={i}>
-                <Row label={r["סוג הבצק"] || "(ללא שם)"} sub={`עגלה #${r["מס' עגלה"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות אריזות סופית"]} אריזות</span>} />
-                {i < packaging.rows.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </SubSection>
+          {activeTab === "mixers" && (
+            <SubSection icon="🌀" title={selectedDate ? "ייצור מיקסרים (בקרת לישה)" : "ייצור מיקסרים היום (בקרת לישה)"} empty={mixers.rows.length === 0}>
+              {mixerTotals.length > 0 && (
+                <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px dashed ${T.border}` }}>
+                  <Row
+                    label="סה״כ מיקסרים (לישות)"
+                    right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
+                  />
+                  <div style={{ fontSize: 12, color: T.inkFaint, margin: "8px 0 6px" }}>לפי מוצר:</div>
+                  {mixerTotals.map((m, i) => (
+                    <Row
+                      key={i}
+                      label={m.name}
+                      sub={`${m.count} לישות`}
+                      right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{m.weight} ק״ג</span>}
+                    />
+                  ))}
+                </div>
+              )}
+              {mixers.rows.map((r, i) => (
+                <React.Fragment key={i}>
+                  <Row
+                    label={`${r["מוצר"] || "(ללא שם)"} · לישה #${r["מספר לישה"] || "-"}`}
+                    sub={`אצווה ${r["מס' אצווה מנה"] || "-"} · ${r["זמן לישה"] || ""} · ${r["תקין/לא תקין"] || ""}`}
+                    right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["משקל בצק"]} ק״ג</span>}
+                  />
+                  {i < mixers.rows.length - 1 && <Divider />}
+                </React.Fragment>
+              ))}
+            </SubSection>
+          )}
 
-          <div style={{ fontSize: 12, color: T.inkFaint, marginTop: 4 }}>
+          {activeTab === "packaging" && (
+            <SubSection icon="📦" title={selectedDate ? "אריזה שנעשתה" : "אריזה שנעשתה היום"} empty={packaging.rows.length === 0}>
+              {packaging.rows.map((r, i) => (
+                <React.Fragment key={i}>
+                  <Row label={r["סוג הבצק"] || "(ללא שם)"} sub={`עגלה #${r["מס' עגלה"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות אריזות סופית"]} אריזות</span>} />
+                  {i < packaging.rows.length - 1 && <Divider />}
+                </React.Fragment>
+              ))}
+            </SubSection>
+          )}
+
+          <div style={{ fontSize: 12, color: T.inkFaint, marginTop: 16 }}>
             🚚 משלוחים אינם חלק ממערכת זו — הם מנוהלים במערכת מעקב נהגים/לקוחות נפרדת.
           </div>
         </>
