@@ -201,7 +201,7 @@ function useHaccpRecords(limit) {
 
 // קריאה בלבד (GET) ממערכת הייצור החיה - formType כאן הוא weighing/kneading/packaging/plan
 // שימו לב: המערכת החיה מחזירה מערך פשוט [...], לא {ok, records}
-function useProductionLive(formType) {
+function useProductionLive(formType, date) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -209,7 +209,8 @@ function useProductionLive(formType) {
   const load = () => {
     setLoading(true);
     setError(null);
-    fetch(PRODUCTION_LIVE_WEBHOOK_URL + "?formType=" + formType)
+    const dateParam = date ? "&date=" + date : "";
+    fetch(PRODUCTION_LIVE_WEBHOOK_URL + "?formType=" + formType + dateParam)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.status === "error") throw new Error(data.message);
@@ -222,7 +223,7 @@ function useProductionLive(formType) {
       });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [formType, date]);
 
   return { rows, loading, error, reload: load };
 }
@@ -364,8 +365,9 @@ function HaccpModule({ plan }) {
 }
 
 function ProductionModule() {
-  const kits = useProductionLive("weighing");       // קיטים
-  const packaging = useProductionLive("packaging");  // אריזה
+  const [selectedDate, setSelectedDate] = useState(""); // ריק = היום
+  const kits = useProductionLive("weighing", selectedDate || null);       // קיטים
+  const packaging = useProductionLive("packaging", selectedDate || null);  // אריזה
 
   const loading = kits.loading || packaging.loading;
   const error = kits.error || packaging.error;
@@ -384,22 +386,38 @@ function ProductionModule() {
   const SubSection = ({ icon, title, children, empty }) => (
     <div style={{ marginBottom: 18 }}>
       <div style={{ fontSize: 13.5, fontWeight: 700, color: T.ink, marginBottom: 8 }}>{icon} {title}</div>
-      {empty ? <div style={{ fontSize: 12.5, color: T.inkFaint }}>אין נתונים היום</div> : children}
+      {empty ? <div style={{ fontSize: 12.5, color: T.inkFaint }}>אין נתונים ליום זה</div> : children}
     </div>
   );
 
   return (
     <Card
       title="דוח ייצור — נתונים חיים (טופס 1023)"
-      subtitle="קריאה בלבד ממערכת הייצור בפועל · היום בלבד"
+      subtitle={selectedDate ? `מציג: ${selectedDate}` : "היום · קריאה בלבד ממערכת הייצור בפועל"}
       accent={CAT.production.main}
       action={
-        <button
-          onClick={reloadAll}
-          style={{ fontSize: 12, color: CAT.production.main, background: CAT.production.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
-        >
-          רענן
-        </button>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ fontSize: 12, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 8px" }}
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate("")}
+              style={{ fontSize: 12, color: T.inkSoft, background: T.bg, border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+            >
+              חזרה להיום
+            </button>
+          )}
+          <button
+            onClick={reloadAll}
+            style={{ fontSize: 12, color: CAT.production.main, background: CAT.production.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
+          >
+            רענן
+          </button>
+        </div>
       }
     >
       {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען נתונים...</div>}
@@ -407,7 +425,7 @@ function ProductionModule() {
 
       {!loading && !error && (
         <>
-          <SubSection icon="🧺" title="קיטים שהוכנו היום" empty={kits.rows.length === 0}>
+          <SubSection icon="🧺" title={selectedDate ? "קיטים שהוכנו" : "קיטים שהוכנו היום"} empty={kits.rows.length === 0}>
             {kits.rows.map((r, i) => (
               <React.Fragment key={i}>
                 <Row label={r["מתכון"]} sub={`חו"ג: ${r["חו\"ג"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות קיטים סופי"]} קיטים</span>} />
@@ -425,7 +443,7 @@ function ProductionModule() {
             ))}
           </SubSection>
 
-          <SubSection icon="📦" title="אריזה שנעשתה היום" empty={packaging.rows.length === 0}>
+          <SubSection icon="📦" title={selectedDate ? "אריזה שנעשתה" : "אריזה שנעשתה היום"} empty={packaging.rows.length === 0}>
             {packaging.rows.map((r, i) => (
               <React.Fragment key={i}>
                 <Row label={r["סוג הבצק"] || "(ללא שם)"} sub={`עגלה #${r["מס' עגלה"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות אריזות סופית"]} אריזות</span>} />
