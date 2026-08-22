@@ -451,7 +451,20 @@ function ProductionModule() {
 
       {!loading && !error && (
         <>
-          <SubSection icon="🧺" title={selectedDate ? "אצוות קיטים שהוכנו" : "אצוות קיטים שהוכנו היום"} empty={batches.length === 0}>
+          <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 4 }}>
+            📌 קיטים ומיקסרים הם אותו נתון — הכנסת חומרי גלם למיקסר מייצרת את הקיטים. אין שני מקורות נפרדים.
+          </div>
+
+          <SubSection icon="🌀" title="סה״כ ייצור לפי מתכון (מיקסרים)" empty={recipeTotals.length === 0}>
+            {recipeTotals.map((r, i) => (
+              <React.Fragment key={i}>
+                <Row label={r.name} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r.qty} קיטים</span>} />
+                {i < recipeTotals.length - 1 && <Divider />}
+              </React.Fragment>
+            ))}
+          </SubSection>
+
+          <SubSection icon="🧺" title={selectedDate ? "פירוט אצוות (קיטים)" : "פירוט אצוות (קיטים) - היום"} empty={batches.length === 0}>
             {batches.map((b, i) => (
               <React.Fragment key={b.batchId}>
                 <Row
@@ -460,15 +473,6 @@ function ProductionModule() {
                   right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{b.qty} קיטים</span>}
                 />
                 {i < batches.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </SubSection>
-
-          <SubSection icon="🌀" title="סה״כ ייצור מיקסרים לפי מתכון" empty={recipeTotals.length === 0}>
-            {recipeTotals.map((r, i) => (
-              <React.Fragment key={i}>
-                <Row label={r.name} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r.qty} קיטים</span>} />
-                {i < recipeTotals.length - 1 && <Divider />}
               </React.Fragment>
             ))}
           </SubSection>
