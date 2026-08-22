@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>דיווח ייצור - סנדבוקס מִשְמָר</title>
+<style>
+  :root{
+    --primary:#B4620A;
+    --primary-soft:#FBEDDC;
+    --ink:#14171F;
+    --border:#E7E9ED;
+    --bg:#F7F8FA;
+    --ok:#0F9D58;
+    --bad:#D6483F;
+  }
+  *{box-sizing:border-box; font-family:Arial, sans-serif;}
+  body{background:var(--bg); margin:0; padding:24px; color:var(--ink);}
+  .card{
+    max-width:480px; margin:0 auto; background:#fff;
+    border:1px solid var(--border); border-radius:16px; padding:24px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.05);
+  }
+  h2{margin:0 0 4px; font-size:20px;}
+  .sub{color:#6B7280; font-size:13px; margin-bottom:20px;}
+  label{display:block; font-size:13px; font-weight:600; margin:14px 0 6px;}
+  select, input, textarea{
+    width:100%; padding:10px 12px; border:1px solid var(--border);
+    border-radius:8px; font-size:14px;
+  }
+  button{
+    width:100%; margin-top:20px; background:var(--primary); color:#fff;
+    border:none; border-radius:10px; padding:13px; font-size:15px;
+    font-weight:700; cursor:pointer;
+  }
+  #status{margin-top:14px; font-size:13px; text-align:center; white-space:pre-wrap;}
+  .ok{color:var(--ok);}
+  .bad{color:var(--bad);}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>📋 דיווח ייצור — סנדבוקס</h2>
+  <div class="sub">פרויקט בדיקה נפרד — לא קשור למערכת הייצור החיה (tofes-1/2/3)</div>
+
+  <label>קו ייצור</label>
+  <select id="line">
+    <option value="קו לישה 1">קו לישה 1</option>
+    <option value="קו לישה 2">קו לישה 2</option>
+    <option value="קו אריזה">קו אריזה</option>
+  </select>
+
+  <label>יעד יומי (יח')</label>
+  <input type="number" id="target" value="900">
+
+  <label>כמות בפועל (יח')</label>
+  <input type="number" id="actual" value="0">
+
+  <label>סטטוס בקרה</label>
+  <select id="status">
+    <option value="תקין">תקין</option>
+    <option value="לא תקין">לא תקין</option>
+  </select>
+
+  <label>הערות</label>
+  <textarea id="notes" rows="2" placeholder="אופציונלי"></textarea>
+
+  <button id="sendBtn">☁️ שלח דיווח</button>
+  <div id="status_msg"></div>
+</div>
+
+<script>
+// אותו webhook מאוחד של הסנדבוקס — formType שונה מפריד בין סוגי הטפסים
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwWvXIvp2dS8i-qCseApYC1vvA-mEzEoXLyeBvhBnATUazrQCyLKLxaovOgw2OlswDd/exec";
+
+document.getElementById("sendBtn").addEventListener("click", async () => {
+  const msgEl = document.getElementById("status_msg");
+  const now = new Date();
+
+  const record = {
+    formType: "production_line",
+    date: now.toISOString().slice(0,10),
+    time: now.toTimeString().slice(0,5),
+    status: document.getElementById("status").value,
+    line: document.getElementById("line").value,
+    target: Number(document.getElementById("target").value),
+    actual: Number(document.getElementById("actual").value),
+    notes: document.getElementById("notes").value
+  };
+
+  msgEl.textContent = "שולח...";
+  msgEl.className = "";
+
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(record)
+    });
+    msgEl.textContent = "הדיווח נשלח בהצלחה ✔";
+    msgEl.className = "ok";
+  } catch (err) {
+    msgEl.textContent = "שגיאה בשליחה: " + err.message;
+    msgEl.className = "bad";
+  }
+});
+</script>
+</body>
+</html>
