@@ -261,6 +261,13 @@ function useFsNcLive(type, date) {
   return { rows, loading, error, reload: load };
 }
 
+// ממיר תאריך גולמי (למשל "2026-07-05T07:00:00.000Z") לפורמט קצר וקריא
+function shortDate(v) {
+  if (!v) return "";
+  const s = String(v);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
+
 function mapHaccpStatus(s) {
   if (s === "תקין") return "approved";
   if (s === "לא תקין") return "failed";
@@ -503,7 +510,7 @@ function HaccpModule({ plan }) {
                 <React.Fragment key={i}>
                   <Row
                     label={`${r["תחום"] || "(ללא תחום)"} · ${r["מקור"] || ""}`}
-                    sub={`${r["תאריך"] || ""} · ${r["תיאור אי-ההתאמה"] || ""}`}
+                    sub={`${shortDate(r["תאריך"])} · ${r["תיאור אי-ההתאמה"] || ""}`}
                     right={<Badge status={statusMap[r["סטטוס"]] || "pending"} />}
                   />
                   {i < arr.length - 1 && <Divider />}
@@ -524,7 +531,7 @@ function HaccpModule({ plan }) {
               <React.Fragment key={i}>
                 <Row
                   label={r["נקודת בקרה"] || "(ללא נקודת בקרה)"}
-                  sub={`${r["תאריך"] || ""} · ${r["סוג סכנה"] || ""} · ${r["שלב תהליך"] || ""}`}
+                  sub={`${shortDate(r["תאריך"])} · ${r["סוג סכנה"] || ""} · ${r["שלב תהליך"] || ""}`}
                   right={<Badge status={r["חריגה"] === "כן" ? "failed" : "approved"} />}
                 />
                 {i < arr.length - 1 && <Divider />}
