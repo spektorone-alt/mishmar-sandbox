@@ -387,10 +387,10 @@ function HaccpModule({ plan }) {
 
   const [activeTab, setActiveTab] = useState("kabala");
   const TABS = [
-    { id: "kabala", label: "📥 קבלת חומרי גלם", count: liveRows.length },
-    { id: "gmp", label: "✅ בדיקות GMP", count: gmp.rows.length },
-    { id: "nc", label: "⚠️ אי-התאמות", count: nc.rows.length },
-    { id: "fs", label: "🛡️ בטיחות מזון", count: fs.rows.length },
+    { id: "kabala", icon: "📥", text: "קבלת חומרי גלם", count: liveRows.length },
+    { id: "gmp", icon: "✅", text: "בדיקות GMP", count: gmp.rows.length },
+    { id: "nc", icon: "⚠️", text: "אי-התאמות", count: nc.rows.length },
+    { id: "fs", icon: "🛡️", text: "בטיחות מזון", count: fs.rows.length },
   ];
 
   const latestGmp = gmp.rows.length > 0 ? gmp.rows[0] : null;
@@ -430,7 +430,7 @@ function HaccpModule({ plan }) {
           </div>
         }
       >
-        <div className="flex gap-2" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
+        <div className="flex" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
           {TABS.map((t) => {
             const isActive = activeTab === t.id;
             return (
@@ -438,32 +438,41 @@ function HaccpModule({ plan }) {
                 key={t.id}
                 onClick={() => setActiveTab(t.id)}
                 style={{
-                  fontSize: 13,
+                  flex: 1,
+                  minWidth: 0,
                   fontWeight: isActive ? 700 : 500,
                   color: isActive ? CAT.haccp.main : T.inkSoft,
                   background: "transparent",
                   border: "none",
                   borderBottom: isActive ? `2px solid ${CAT.haccp.main}` : "2px solid transparent",
-                  padding: "8px 4px",
+                  padding: "8px 2px",
                   marginBottom: -2,
                   cursor: "pointer",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 3,
                 }}
               >
-                {t.label}
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: isActive ? "#fff" : T.inkFaint,
-                    background: isActive ? CAT.haccp.main : T.bg,
-                    borderRadius: 999,
-                    padding: "1px 7px",
-                  }}
-                >
-                  {t.count}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ fontSize: 15 }}>{t.icon}</span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: isActive ? "#fff" : T.inkFaint,
+                      background: isActive ? CAT.haccp.main : T.bg,
+                      borderRadius: 999,
+                      minWidth: 16,
+                      textAlign: "center",
+                      padding: "1px 5px",
+                    }}
+                  >
+                    {t.count}
+                  </span>
+                </div>
+                <span style={{ fontSize: 10.5, lineHeight: 1.2, textAlign: "center" }}>
+                  {t.text}
                 </span>
               </button>
             );
@@ -633,9 +642,9 @@ function ProductionModule() {
 
   const [activeTab, setActiveTab] = useState("kits");
   const TABS = [
-    { id: "kits", label: "🧺 קיטים", count: batches.length },
-    { id: "mixers", label: "🌀 מיקסרים", count: mixers.rows.length },
-    { id: "packaging", label: "📦 אריזה", count: packaging.rows.length },
+    { id: "kits", icon: "🧺", text: "קיטים", count: batches.length },
+    { id: "mixers", icon: "🌀", text: "מיקסרים", count: mixers.rows.length },
+    { id: "packaging", icon: "📦", text: "אריזה", count: packaging.rows.length },
   ];
 
   const SubSection = ({ icon, title, children, empty }) => (
@@ -680,7 +689,7 @@ function ProductionModule() {
 
       {!loading && !error && (
         <>
-          <div className="flex gap-2" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
+          <div className="flex" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
             {TABS.map((t) => {
               const isActive = activeTab === t.id;
               return (
@@ -688,32 +697,41 @@ function ProductionModule() {
                   key={t.id}
                   onClick={() => setActiveTab(t.id)}
                   style={{
-                    fontSize: 13,
+                    flex: 1,
+                    minWidth: 0,
                     fontWeight: isActive ? 700 : 500,
                     color: isActive ? CAT.production.main : T.inkSoft,
                     background: "transparent",
                     border: "none",
                     borderBottom: isActive ? `2px solid ${CAT.production.main}` : "2px solid transparent",
-                    padding: "8px 4px",
+                    padding: "8px 2px",
                     marginBottom: -2,
                     cursor: "pointer",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 3,
                   }}
                 >
-                  {t.label}
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: isActive ? "#fff" : T.inkFaint,
-                      background: isActive ? CAT.production.main : T.bg,
-                      borderRadius: 999,
-                      padding: "1px 7px",
-                    }}
-                  >
-                    {t.count}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 15 }}>{t.icon}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: isActive ? "#fff" : T.inkFaint,
+                        background: isActive ? CAT.production.main : T.bg,
+                        borderRadius: 999,
+                        minWidth: 16,
+                        textAlign: "center",
+                        padding: "1px 5px",
+                      }}
+                    >
+                      {t.count}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: 10.5, lineHeight: 1.2, textAlign: "center" }}>
+                    {t.text}
                   </span>
                 </button>
               );
