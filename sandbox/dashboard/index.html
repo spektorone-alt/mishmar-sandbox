@@ -488,29 +488,28 @@ function HaccpModule({ plan }) {
             {!gmp.loading && !gmp.error && gmp.rows.length === 0 && (
               <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין בדיקות GMP עדיין.</div>
             )}
-            {!gmp.loading && !gmp.error && latestGmp && (
+            {!gmp.loading && !gmp.error && gmp.rows.length > 0 && (
               <>
-                <Row
-                  label={`בדיקה מ-${latestGmp.date} · ${latestGmp.inspector || "-"}`}
-                  right={<Badge status={mapHaccpStatus(latestGmp.status)} />}
-                />
-                <Divider />
-                <Row
-                  label="פריטים שנבדקו"
-                  right={<span style={{ fontSize: 13, color: T.inkSoft }}>{latestGmp.totalCount} סה״כ</span>}
-                />
-                {Number(latestGmp.failedCount) > 0 && (
-                  <>
-                    <Divider />
+                {gmp.rows.map((g, i, arr) => (
+                  <React.Fragment key={i}>
                     <Row
-                      label="לא תקינים"
-                      right={<span style={{ fontSize: 13, fontWeight: 700, color: T.danger }}>{latestGmp.failedCount}</span>}
+                      label={`בדיקה מ-${g.date} · ${g.inspector || "-"}`}
+                      sub={`${g.totalCount} פריטים נבדקו`}
+                      right={
+                        Number(g.failedCount) > 0 ? (
+                          <span style={{ fontSize: 12, fontWeight: 700, color: T.danger }}>{g.failedCount} לא תקינים</span>
+                        ) : (
+                          <Badge status="approved" />
+                        )
+                      }
                     />
-                  </>
-                )}
-                {Array.isArray(latestGmp.results) && latestGmp.results.filter((r) => r.status === "לא תקין").length > 0 && (
-                  <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 6 }}>פריטים שנכשלו:</div>
+                    {i < arr.length - 1 && <Divider />}
+                  </React.Fragment>
+                ))}
+
+                {latestGmp && Array.isArray(latestGmp.results) && latestGmp.results.filter((r) => r.status === "לא תקין").length > 0 && (
+                  <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px dashed ${T.border}` }}>
+                    <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 6 }}>פריטים שנכשלו בבדיקה האחרונה:</div>
                     {latestGmp.results.filter((r) => r.status === "לא תקין").map((r, i) => (
                       <Row key={i} label={`${r.section} · ${r.item}`} right={<Badge status="failed" />} />
                     ))}
