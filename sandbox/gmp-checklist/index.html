@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>בדיקת GMP יומית - סנדבוקס מִשְמָר</title>
+<style>
+  :root{
+    --primary:#0E8A6D; --primary-soft:#E6F5F0;
+    --ink:#14171F; --border:#E7E9ED; --bg:#F7F8FA;
+    --ok:#0F9D58; --bad:#D6483F;
+  }
+  *{box-sizing:border-box; font-family:Arial, sans-serif;}
+  body{background:var(--bg); margin:0; padding:20px; color:var(--ink);}
+  .wrap{max-width:600px; margin:0 auto;}
+  h2{margin:0 0 4px; font-size:20px;}
+  .sub{color:#6B7280; font-size:13px; margin-bottom:18px;}
+  .top-fields{display:flex; gap:10px; margin-bottom:16px;}
+  .top-fields input{flex:1; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-size:13px;}
+  .section{background:#fff; border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:14px;}
+  .section h3{margin:0 0 10px; font-size:14.5px;}
+  .item-row{display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid #F1F2F4;}
+  .item-row:last-child{border-bottom:none;}
+  .item-name{font-size:13px;}
+  .toggle{display:flex; gap:6px;}
+  .toggle button{
+    border:1px solid var(--border); background:#fff; border-radius:7px;
+    padding:5px 10px; font-size:12px; cursor:pointer;
+  }
+  .toggle button.ok.active{background:var(--ok); color:#fff; border-color:var(--ok);}
+  .toggle button.bad.active{background:var(--bad); color:#fff; border-color:var(--bad);}
+  #sendBtn{
+    width:100%; background:var(--primary); color:#fff; border:none;
+    border-radius:10px; padding:14px; font-size:15px; font-weight:700; cursor:pointer;
+    margin-top:6px;
+  }
+  #status_msg{margin-top:14px; font-size:13px; text-align:center; white-space:pre-wrap;}
+  .ok-text{color:var(--ok);} .bad-text{color:var(--bad);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>✅ בדיקת GMP יומית — סנדבוקס</h2>
+  <div class="sub">פרויקט בדיקה נפרד — לא קשור למערכת ה-GMP החיה</div>
+
+  <div class="top-fields">
+    <input type="date" id="inpDate">
+    <input type="text" id="inpInspector" placeholder="מבצע בדיקה">
+  </div>
+
+  <div id="sections"></div>
+
+  <button id="sendBtn">☁️ שלח בדיקה יומית</button>
+  <div id="status_msg"></div>
+</div>
+
+<script>
+const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwWvXIvp2dS8i-qCseApYC1vvA-mEzEoXLyeBvhBnATUazrQCyLKLxaovOgw2OlswDd/exec";
+
+// אותן תחנות ופריטים כמו הטופס החי (gmp-checklist), פשוט ממופה כ-תקין/לא תקין לכל פריט
+const CHECKLIST = [
+  { title: "סביבה חיצונית", items: ["היעדר צמחייה חריגה","פחים חיצוניים","שירותים","חדר אוכל עובדים","מעברים פנויים","עמדות שטיפת ידיים"] },
+  { title: "חומרי גלם", items: ["רצפה","קירות","תקרה","ניקוזים","משטחי אחסון","היעדר מזיקים","חרקנים תקינים ונקיים"] },
+  { title: "לישה", items: ["מלוש / מיקסר","מסוע בצק","רצפה","קירות","תקרה","ניקוזים","היעדר שאריות בצק / קמח"] },
+  { title: "חלוקה וכדרור", items: ["מחלק בצק","מכדררת","מסועים","שולחנות עבודה","רצפה"] },
+  { title: "התפחה", items: ["תא התפחה","מגשים / עגלות","מאווררים","רצפה","ניקוזים"] },
+  { title: "אפייה חלקית / מלאה", items: ["תנור","מסוע תנור","מגשים / עגלות","קולט אדים","רצפה","ניקוזים"] },
+  { title: "הקפאה מהירה - שוק", items: ["מסוע צינון","מאווררים","היעדר עיבוי","שוק פריזר","עגלות הקפאה"] },
+  { title: "אריזה וסימון", items: ["מכונת אריזה","שולחנות אריזה","חומרי אריזה","רצפה","קירות"] },
+  { title: 'מחסן תוצ"ג קפוא', items: ["חדר קפוא","משטחים","סימון אצוות","היעדר קרטונים פגומים"] },
+];
+
+const state = {}; // key: "sectionIdx-itemIdx" -> "תקין" | "לא תקין"
+
+function render() {
+  const container = document.getElementById("sections");
+  container.innerHTML = CHECKLIST.map((sec, si) => `
+    <div class="section">
+      <h3>${sec.title}</h3>
+      ${sec.items.map((item, ii) => {
+        const key = si + '-' + ii;
+        const val = state[key] || "תקין";
+        return `
+          <div class="item-row">
+            <span class="item-name">${item}</span>
+            <div class="toggle" data-key="${key}">
+              <button type="button" class="ok ${val === 'תקין' ? 'active' : ''}" data-val="תקין">תקין</button>
+              <button type="button" class="bad ${val === 'לא תקין' ? 'active' : ''}" data-val="לא תקין">לא תקין</button>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+  `).join('');
+
+  container.querySelectorAll(".toggle").forEach(t => {
+    const key = t.dataset.key;
+    if (!state[key]) state[key] = "תקין";
+    t.querySelectorAll("button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state[key] = btn.dataset.val;
+        render();
+      });
+    });
+  });
+}
+render();
+
+document.getElementById("sendBtn").addEventListener("click", async () => {
+  const msgEl = document.getElementById("status_msg");
+  const date = document.getElementById("inpDate").value || new Date().toISOString().slice(0,10);
+  const inspector = document.getElementById("inpInspector").value;
+
+  const results = [];
+  CHECKLIST.forEach((sec, si) => {
+    sec.items.forEach((item, ii) => {
+      const key = si + '-' + ii;
+      results.push({ section: sec.title, item, status: state[key] || "תקין" });
+    });
+  });
+
+  const failedCount = results.filter(r => r.status === "לא תקין").length;
+
+  const record = {
+    formType: "gmp_checklist",
+    date,
+    time: new Date().toTimeString().slice(0,5),
+    status: failedCount > 0 ? "לא תקין" : "תקין",
+    inspector,
+    failedCount,
+    totalCount: results.length,
+    results
+  };
+
+  msgEl.textContent = "שולח...";
+  msgEl.className = "";
+
+  try {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(record)
+    });
+    msgEl.textContent = `הבדיקה נשלחה בהצלחה ✔ (${failedCount} מתוך ${results.length} לא תקינים)`;
+    msgEl.className = failedCount > 0 ? "bad-text" : "ok-text";
+  } catch (err) {
+    msgEl.textContent = "שגיאה בשליחה: " + err.message;
+    msgEl.className = "bad-text";
+  }
+});
+</script>
+</body>
+</html>
