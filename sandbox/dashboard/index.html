@@ -164,7 +164,7 @@ function ProgressBar({ pct, color }) {
 }
 
 // hook משותף — שולף רשומות אמיתיות מהסנדבוקס (לא נוגע במערכת החיה)
-function useHaccpRecords(limit) {
+function useLiveRecords(formType, limit) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -172,7 +172,7 @@ function useHaccpRecords(limit) {
   const load = () => {
     setLoading(true);
     setError(null);
-    fetch(HACCP_WEBHOOK_URL + "?formType=kabala_homre_gelem&limit=" + limit)
+    fetch(HACCP_WEBHOOK_URL + "?formType=" + formType + "&limit=" + limit)
       .then((res) => res.json())
       .then((data) => {
         if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
@@ -188,6 +188,11 @@ function useHaccpRecords(limit) {
   useEffect(() => { load(); }, []);
 
   return { rows, loading, error, reload: load };
+}
+
+// עבור תאימות אחורית עם קריאות קיימות במסך HACCP
+function useHaccpRecords(limit) {
+  return useLiveRecords("kabala_homre_gelem", limit);
 }
 
 function mapHaccpStatus(s) {
@@ -324,24 +329,52 @@ function HaccpModule({ plan }) {
 }
 
 function ProductionModule() {
-  const lines = [
-    { name: "קו לישה 1", target: 900, actual: 900, status: "approved" },
-    { name: "קו לישה 2", target: 900, actual: 640, status: "pending" },
-    { name: "קו אריזה", target: 1200, actual: 1180, status: "approved" },
-  ];
+  const { rows, loading, error, reload } = useLiveRecords("production_line", 20);
+
+  // לוקח את הדיווח האחרון לכל קו ייצור בנפרד
+  const latestByLine = {};
+  rows.forEach((r) => {
+    if (!latestByLine[r.line] || r.date + r.time > latestByLine[r.line].date + latestByLine[r.line].time) {
+      latestByLine[r.line] = r;
+    }
+  });
+  const lines = Object.values(latestByLine);
+
   return (
-    <Card title="קווי ייצור — משמרת בוקר" subtitle="19.08.2026" accent={CAT.production.main}>
-      <div className="flex flex-col gap-5">
-        {lines.map((l) => (
-          <div key={l.name}>
-            <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
-              <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{l.name}</span>
-              <span style={{ fontSize: 13, color: T.inkSoft }}>{l.actual} / {l.target} יח&apos;</span>
+    <Card
+      title="קווי ייצור — נתונים חיים"
+      subtitle="סנדבוקס נפרד · דיווח עצמאי (לא tofes-1/2/3)"
+      accent={CAT.production.main}
+      action={
+        <button
+          onClick={reload}
+          style={{ fontSize: 12, color: CAT.production.main, background: CAT.production.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
+        >
+          רענן
+        </button>
+      }
+    >
+      {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען נתונים...</div>}
+      {error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {error}</div>}
+      {!loading && !error && lines.length === 0 && (
+        <div style={{ fontSize: 13, color: T.inkFaint }}>אין עדיין דיווחי ייצור בסנדבוקס.</div>
+      )}
+      {!loading && !error && lines.length > 0 && (
+        <div className="flex flex-col gap-5">
+          {lines.map((l) => (
+            <div key={l.line}>
+              <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: T.ink }}>{l.line}</span>
+                <span style={{ fontSize: 13, color: T.inkSoft }}>{l.actual} / {l.target} יח&apos;</span>
+              </div>
+              <ProgressBar
+                pct={Math.min(100, (Number(l.actual) / Number(l.target || 1)) * 100)}
+                color={l.status === "תקין" ? T.success : CAT.production.main}
+              />
             </div>
-            <ProgressBar pct={Math.min(100, (l.actual / l.target) * 100)} color={l.status === "approved" ? T.success : CAT.production.main} />
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </Card>
   );
 }
