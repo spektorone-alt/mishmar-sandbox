@@ -309,60 +309,153 @@ function Overview({ plan }) {
 
 function HaccpModule({ plan }) {
   const { rows: liveRows, loading, error, reload } = useHaccpRecords(10);
+  const gmp = useLiveRecords("gmp_checklist", 5);
+
+  const [activeTab, setActiveTab] = useState("kabala");
+  const TABS = [
+    { id: "kabala", label: "📥 קבלת חומרי גלם", count: liveRows.length },
+    { id: "gmp", label: "✅ בדיקות GMP", count: gmp.rows.length },
+  ];
 
   const proRows = [
     { id: "0229", form: "אי-התאמה — סטיית טמפרטורה", by: "רונית כהן", time: "אתמול 19:05", status: "pending" },
     { id: "0228", form: "בקרת לישה", by: "משה דהן", time: "אתמול 14:22", status: "failed" },
   ];
 
+  const latestGmp = gmp.rows.length > 0 ? gmp.rows[0] : null;
+
   return (
     <div className="flex flex-col gap-4">
       <Card
-        title="יומן HACCP — בקרת קבלת חומרי גלם"
+        title="יומן HACCP ואיכות"
         subtitle="נתונים חיים מהגיליון · חלק מהחבילה החינמית"
         accent={CAT.haccp.main}
         action={
           <button
-            onClick={reload}
+            onClick={() => { reload(); gmp.reload(); }}
             style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
           >
             רענן
           </button>
         }
       >
-        {loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
-        {error && (
-          <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>
-            שגיאה בטעינת הנתונים: {error}
-          </div>
+        <div className="flex gap-2" style={{ marginBottom: 18, borderBottom: `1px solid ${T.border}`, paddingBottom: 2 }}>
+          {TABS.map((t) => {
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setActiveTab(t.id)}
+                style={{
+                  fontSize: 13,
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? CAT.haccp.main : T.inkSoft,
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: isActive ? `2px solid ${CAT.haccp.main}` : "2px solid transparent",
+                  padding: "8px 4px",
+                  marginBottom: -2,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                {t.label}
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: isActive ? "#fff" : T.inkFaint,
+                    background: isActive ? CAT.haccp.main : T.bg,
+                    borderRadius: 999,
+                    padding: "1px 7px",
+                  }}
+                >
+                  {t.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {activeTab === "kabala" && (
+          <>
+            {loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
+            {error && (
+              <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>
+                שגיאה בטעינת הנתונים: {error}
+              </div>
+            )}
+            {!loading && !error && liveRows.length === 0 && (
+              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין רשומות עדיין בגיליון.</div>
+            )}
+            {!loading && !error && liveRows.length > 0 && (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      {["תאריך", "ספק", "חומר גלם", "אצווה", "בודק", "סטטוס"].map((h) => (
+                        <th key={h} style={{ textAlign: "right", fontSize: 12, color: T.inkFaint, fontWeight: 600, padding: "0 0 10px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveRows.map((r, i) => (
+                      <tr key={i}>
+                        <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.date} {r.time}</td>
+                        <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.supplier}</td>
+                        <td style={{ padding: "12px 0", fontSize: 13.5, color: T.ink, fontWeight: 500, borderBottom: `1px solid ${T.border}` }}>{r.material}</td>
+                        <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.batch}</td>
+                        <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.inspector}</td>
+                        <td style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}` }}><Badge status={mapHaccpStatus(r.status)} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
-        {!loading && !error && liveRows.length === 0 && (
-          <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין רשומות עדיין בגיליון.</div>
-        )}
-        {!loading && !error && liveRows.length > 0 && (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["תאריך", "ספק", "חומר גלם", "אצווה", "בודק", "סטטוס"].map((h) => (
-                    <th key={h} style={{ textAlign: "right", fontSize: 12, color: T.inkFaint, fontWeight: 600, padding: "0 0 10px", borderBottom: `1px solid ${T.border}` }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {liveRows.map((r, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.date} {r.time}</td>
-                    <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.supplier}</td>
-                    <td style={{ padding: "12px 0", fontSize: 13.5, color: T.ink, fontWeight: 500, borderBottom: `1px solid ${T.border}` }}>{r.material}</td>
-                    <td style={{ padding: "12px 0", fontSize: 12.5, color: T.inkFaint, borderBottom: `1px solid ${T.border}` }}>{r.batch}</td>
-                    <td style={{ padding: "12px 0", fontSize: 13, color: T.inkSoft, borderBottom: `1px solid ${T.border}` }}>{r.inspector}</td>
-                    <td style={{ padding: "12px 0", borderBottom: `1px solid ${T.border}` }}><Badge status={mapHaccpStatus(r.status)} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+        {activeTab === "gmp" && (
+          <>
+            {gmp.loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
+            {gmp.error && <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>שגיאה: {gmp.error}</div>}
+            {!gmp.loading && !gmp.error && gmp.rows.length === 0 && (
+              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין בדיקות GMP עדיין.</div>
+            )}
+            {!gmp.loading && !gmp.error && latestGmp && (
+              <>
+                <Row
+                  label={`בדיקה מ-${latestGmp.date} · ${latestGmp.inspector || "-"}`}
+                  right={<Badge status={mapHaccpStatus(latestGmp.status)} />}
+                />
+                <Divider />
+                <Row
+                  label="פריטים שנבדקו"
+                  right={<span style={{ fontSize: 13, color: T.inkSoft }}>{latestGmp.totalCount} סה״כ</span>}
+                />
+                {Number(latestGmp.failedCount) > 0 && (
+                  <>
+                    <Divider />
+                    <Row
+                      label="לא תקינים"
+                      right={<span style={{ fontSize: 13, fontWeight: 700, color: T.danger }}>{latestGmp.failedCount}</span>}
+                    />
+                  </>
+                )}
+                {Array.isArray(latestGmp.results) && latestGmp.results.filter((r) => r.status === "לא תקין").length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 6 }}>פריטים שנכשלו:</div>
+                    {latestGmp.results.filter((r) => r.status === "לא תקין").map((r, i) => (
+                      <Row key={i} label={`${r.section} · ${r.item}`} right={<Badge status="failed" />} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </Card>
 
