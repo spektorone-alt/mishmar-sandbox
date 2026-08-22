@@ -289,6 +289,9 @@ function mapHaccpStatus(s) {
 
 function Overview({ plan }) {
   const { rows, loading, error } = useHaccpRecords(3);
+  const gmp = useLiveRecords("gmp_checklist", 5);
+  const nc = useFsNcLive("nc");
+  const fs = useFsNcLive("fs");
   const kits = useProductionLive("weighing");
   const mixers = useProductionLive("kneading");
 
@@ -312,29 +315,50 @@ function Overview({ plan }) {
   const kitsDate = extractFileDate(kits.sourceFile);
   const mixersDate = extractFileDate(mixers.sourceFile);
 
+  const openNc = nc.rows.filter((r) => r["סטטוס"] !== "נסגר" && r["סטטוס"] !== "טופל").length;
+  const fsDeviations = fs.rows.filter((r) => r["חריגה"] === "כן").length;
+  const haccpLoading = loading || gmp.loading || nc.loading || fs.loading;
+  const haccpError = error || gmp.error || nc.error || fs.error;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <Card title="HACCP ואיכות" subtitle="נתונים חיים מהגיליון" accent={CAT.haccp.main}>
-        {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
-        {error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {error}</div>}
-        {!loading && !error && rows.length === 0 && (
-          <div style={{ fontSize: 13, color: T.inkFaint }}>אין רשומות עדיין.</div>
-        )}
-        {!loading && !error && rows.map((r, i) => (
-          <React.Fragment key={i}>
-            <Row label={r.material || "(ללא שם)"} sub={`${r.supplier || ""} · ${r.date || ""}`} right={<Badge status={mapHaccpStatus(r.status)} />} />
-            {i < rows.length - 1 && <Divider />}
-          </React.Fragment>
-        ))}
-        {plan === "pro" ? (
+        {haccpLoading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+        {haccpError && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {haccpError}</div>}
+        {!haccpLoading && !haccpError && (
           <>
+            <Row
+              label="📥 קבלת חומרי גלם"
+              right={<span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{rows.length} רשומות</span>}
+            />
             <Divider />
-            <Row label="אי-התאמה #114" sub="דווח אתמול 19:05" right={<Badge status="pending" />} />
+            <Row
+              label="✅ בדיקות GMP"
+              right={<span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{gmp.rows.length} בדיקות</span>}
+            />
+            <Divider />
+            <Row
+              label="⚠️ אי-התאמות"
+              right={
+                openNc > 0 ? (
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.danger }}>{openNc} פתוחות</span>
+                ) : (
+                  <Badge status="approved" />
+                )
+              }
+            />
+            <Divider />
+            <Row
+              label="🛡️ בטיחות מזון"
+              right={
+                fsDeviations > 0 ? (
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.danger }}>{fsDeviations} חריגות</span>
+                ) : (
+                  <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{fs.rows.length} רשומות</span>
+                )
+              }
+            />
           </>
-        ) : (
-          <div style={{ fontSize: 12.5, color: CAT.haccp.main, fontWeight: 600, marginTop: 14 }}>
-            + אי-התאמות וטרייסביליות מלאה בחבילה בתשלום
-          </div>
         )}
       </Card>
 
