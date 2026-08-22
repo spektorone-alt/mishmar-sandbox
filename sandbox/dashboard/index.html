@@ -55,6 +55,10 @@ const PRODUCTION_LIVE_WEBHOOK_URL =
 const FS_NC_WEBHOOK_URL =
   "https://script.google.com/macros/s/AKfycbwmKaBal0PU7hrmGYwQ54226yWti4zDPpOnQfrHsOufi0NpSkUaeVKuZEC6jvw2XIorHQ/exec";
 
+// חיבור קריאה (GET) למערכת ההזמנות/וואטסאפ החיה - נוסף doGet, doPost והלוגיקה הקיימת לא השתנו
+const ORDERS_WEBHOOK_URL =
+  "https://script.google.com/macros/s/AKfycbyeG-D6g3GT_ugNBeO-Z4Qq5Pq2StvDmFCezZ_aMinq8K719VdHnsW_XRbkz4aaZo12hQ/exec";
+
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
@@ -276,6 +280,36 @@ function useFsNcLive(type, date) {
   useEffect(() => { load(); }, [type, date]);
 
   return { rows, loading, error, reload: load };
+}
+
+// קריאה בלבד (GET) ממערכת ההזמנות/וואטסאפ החיה - date אופציונלי YYYY-MM-DD
+function useOrdersLive(date) {
+  const [rows, setRows] = useState([]);
+  const [sourceFile, setSourceFile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    const dateParam = date ? "&date=" + date : "";
+    fetch(ORDERS_WEBHOOK_URL + "?action=orders" + dateParam)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
+        setRows(Array.isArray(data.records) ? data.records : []);
+        setSourceFile(data.sourceFile || null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "לא ניתן היה לטעון נתונים");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { load(); }, [date]);
+
+  return { rows, sourceFile, loading, error, reload: load };
 }
 
 // ממיר תאריך גולמי (למשל "2026-07-05T07:00:00.000Z") לפורמט קצר וקריא
@@ -956,17 +990,57 @@ function WhatsappModule() {
 }
 
 function OrdersModule() {
-  const orders = [
-    { client: "מאפיית הכיכר", items: "20 ק\"ג בצק פיצה", time: "09:14", status: "approved" },
-    { client: "סופרמרקט העיר", items: "35 ק\"ג בצק לחם", time: "08:52", status: "pending" },
-  ];
+  const [selectedDate, setSelectedDate] = useState(""); // ריק = הקובץ האחרון שיש בו נתונים
+  const { rows, sourceFile, loading, error, reload } = useOrdersLive(selectedDate || null);
 
   return (
-    <Card title="קליטת הזמנות" subtitle="התקבלו אוטומטית דרך הבוט" accent={CAT.orders.main}>
-      {orders.map((o, i) => (
-        <React.Fragment key={o.client}>
-          <Row label={o.client} sub={o.items} right={<Badge status={o.status} />} />
-          {i < orders.length - 1 && <Divider />}
+    <Card
+      title="קליטת הזמנות"
+      subtitle={selectedDate ? `מציג: ${selectedDate}` : "הקובץ האחרון הזמין · התקבלו אוטומטית דרך הבוט"}
+      accent={CAT.orders.main}
+      action={
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ fontSize: 12, border: `1px solid ${T.border}`, borderRadius: 8, padding: "5px 8px" }}
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate("")}
+              style={{ fontSize: 12, color: T.inkSoft, background: T.bg, border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+            >
+              נקה
+            </button>
+          )}
+          <button
+            onClick={reload}
+            style={{ fontSize: 12, color: CAT.orders.main, background: CAT.orders.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
+          >
+            רענן
+          </button>
+        </div>
+      }
+    >
+      {sourceFile && (
+        <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 10 }}>📄 מקור: {sourceFile}</div>
+      )}
+      {loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען נתונים...</div>}
+      {error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {error}</div>}
+      {!loading && !error && rows.length === 0 && (
+        <div style={{ fontSize: 13, color: T.inkFaint }}>
+          {selectedDate ? `אין הזמנות בתאריך ${selectedDate}.` : "אין הזמנות עדיין."}
+        </div>
+      )}
+      {!loading && !error && rows.slice().reverse().map((r, i, arr) => (
+        <React.Fragment key={i}>
+          <Row
+            label={r["שם לקוח"] || "(ללא שם)"}
+            sub={`${r["פריטים בהזמנה"] || ""} · ${r["טלפון"] || ""}`}
+            right={<span style={{ fontSize: 12.5, color: T.inkSoft }}>{r["זמן אישור"] || ""}</span>}
+          />
+          {i < arr.length - 1 && <Divider />}
         </React.Fragment>
       ))}
     </Card>
