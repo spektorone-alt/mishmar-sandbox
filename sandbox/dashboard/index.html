@@ -401,14 +401,16 @@ function ProductionModule() {
   });
   const batches = Object.values(batchMap);
 
-  // ייצור מיקסרים (לישה): אגרגציה של משקל בצק לפי מוצר
+  // ייצור מיקסרים (לישה): אגרגציה של משקל בצק וכמות לישות לפי מוצר
   const byProduct = {};
   mixers.rows.forEach((r) => {
     const product = r["מוצר"] || "(ללא שם)";
     const weight = Number(r["משקל בצק"]) || 0;
-    byProduct[product] = (byProduct[product] || 0) + weight;
+    if (!byProduct[product]) byProduct[product] = { weight: 0, count: 0 };
+    byProduct[product].weight += weight;
+    byProduct[product].count += 1;
   });
-  const mixerTotals = Object.entries(byProduct).map(([name, weight]) => ({ name, weight }));
+  const mixerTotals = Object.entries(byProduct).map(([name, v]) => ({ name, weight: v.weight, count: v.count }));
 
   const reloadAll = () => { kits.reload(); mixers.reload(); packaging.reload(); };
 
@@ -470,9 +472,18 @@ function ProductionModule() {
           <SubSection icon="🌀" title={selectedDate ? "ייצור מיקסרים (בקרת לישה)" : "ייצור מיקסרים היום (בקרת לישה)"} empty={mixers.rows.length === 0}>
             {mixerTotals.length > 0 && (
               <div style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px dashed ${T.border}` }}>
-                <div style={{ fontSize: 12, color: T.inkFaint, marginBottom: 6 }}>סה״כ משקל בצק לפי מוצר:</div>
+                <Row
+                  label="סה״כ מיקסרים (לישות)"
+                  right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{mixers.rows.length}</span>}
+                />
+                <div style={{ fontSize: 12, color: T.inkFaint, margin: "8px 0 6px" }}>לפי מוצר:</div>
                 {mixerTotals.map((m, i) => (
-                  <Row key={i} label={m.name} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{m.weight} ק״ג</span>} />
+                  <Row
+                    key={i}
+                    label={m.name}
+                    sub={`${m.count} לישות`}
+                    right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{m.weight} ק״ג</span>}
+                  />
                 ))}
               </div>
             )}
