@@ -337,6 +337,7 @@ function Overview({ plan }) {
   const kits = useProductionLive("weighing");
   const mixers = useProductionLive("kneading");
   const packaging = useProductionLive("packaging");
+  const orders = useOrdersLive();
 
   // סופרים רק אצווה ייחודית אחת (לפי מס' אצווה של חו"ג), לא כל שורת מרכיב בנפרד
   const seenBatches = {};
@@ -448,6 +449,27 @@ function Overview({ plan }) {
         </Card>
       ) : (
         <LockedCard title="ניהול ייצור" blurb="מעקב קווי ייצור, יעדים יומיים ובקרת שקילה בזמן אמת." accent={CAT.production.main} soft={CAT.production.soft} />
+      )}
+
+      {plan === "pro" ? (
+        <Card title="ניהול הזמנות" subtitle="נתונים חיים · הבוט האוטומטי" accent={CAT.orders.main}>
+          {orders.loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+          {orders.error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {orders.error}</div>}
+          {!orders.loading && !orders.error && orders.rows.length === 0 && (
+            <div style={{ fontSize: 13, color: T.inkFaint }}>אין הזמנות עדיין.</div>
+          )}
+          {!orders.loading && !orders.error && orders.rows.length > 0 && (
+            <>
+              <Row
+                label={`משלוח ליום ${orders.rows[0]["יום משלוח"] || "-"}`}
+                sub={orders.rows[0]["תאריך משלוח"] || ""}
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.orders.main }}>{orders.rows.length}</span>}
+              />
+            </>
+          )}
+        </Card>
+      ) : (
+        <LockedCard title="ניהול הזמנות" blurb="קליטת הזמנות אוטומטית מלקוחות דרך הבוט." accent={CAT.orders.main} soft={CAT.orders.soft} />
       )}
 
       {plan === "pro" ? (
