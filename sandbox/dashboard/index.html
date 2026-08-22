@@ -238,7 +238,16 @@ function mapHaccpStatus(s) {
 function Overview({ plan }) {
   const { rows, loading, error } = useHaccpRecords(3);
   const kits = useProductionLive("weighing");
-  const totalKits = kits.rows.reduce((sum, r) => sum + (Number(r["כמות קיטים סופי"]) || 0), 0);
+  // סופרים רק אצווה ייחודית אחת (לפי מס' אצווה של חו"ג), לא כל שורת מרכיב בנפרד
+  const seenBatches = {};
+  let totalKits = 0;
+  kits.rows.forEach((r) => {
+    const id = r["מס' אצווה של חו\"ג"];
+    if (id && !seenBatches[id]) {
+      seenBatches[id] = true;
+      totalKits += Number(r["כמות קיטים סופי"]) || 0;
+    }
+  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -277,7 +286,7 @@ function Overview({ plan }) {
             <>
               <Row label="סה״כ קיטים היום" right={<span style={{ fontSize: 14, fontWeight: 700, color: CAT.production.main }}>{totalKits}</span>} />
               <Divider />
-              <Row label="דיווחי קיטים" right={<span style={{ fontSize: 13, color: T.inkSoft }}>{kits.rows.length} רשומות</span>} />
+              <Row label="אצוות קיטים" right={<span style={{ fontSize: 13, color: T.inkSoft }}>{Object.keys(seenBatches).length} אצוות</span>} />
             </>
           )}
         </Card>
@@ -372,12 +381,29 @@ function ProductionModule() {
   const loading = kits.loading || packaging.loading;
   const error = kits.error || packaging.error;
 
-  // אגרגציה: סה"כ כמות קיטים לכל מתכון (מחושב מתוך אותם נתוני "קיטים")
-  const byRecipe = {};
+  // כל שורה היא מרכיב (חומר גלם) בתוך אצווה - צריך לזהות אצוות ייחודיות
+  // לפי מס' אצווה של חו"ג, ולא לספור כל שורת מרכיב בנפרד
+  const batchMap = {};
   kits.rows.forEach((r) => {
-    const recipe = r["מתכון"] || "(ללא שם)";
-    const qty = Number(r["כמות קיטים סופי"]) || 0;
-    byRecipe[recipe] = (byRecipe[recipe] || 0) + qty;
+    const batchId = r["מס' אצווה של חו\"ג"];
+    if (!batchId) return;
+    if (!batchMap[batchId]) {
+      batchMap[batchId] = {
+        batchId,
+        recipe: r["מתכון"] || "(ללא שם)",
+        qty: Number(r["כמות קיטים סופי"]) || 0,
+        mixerTime: r["הוכנס למיקסר"],
+        ingredientCount: 0,
+      };
+    }
+    batchMap[batchId].ingredientCount += 1;
+  });
+  const batches = Object.values(batchMap);
+
+  // אגרגציה: סה"כ כמות קיטים לכל מתכון - פעם אחת בלבד לכל אצווה ייחודית
+  const byRecipe = {};
+  batches.forEach((b) => {
+    byRecipe[b.recipe] = (byRecipe[b.recipe] || 0) + b.qty;
   });
   const recipeTotals = Object.entries(byRecipe).map(([name, qty]) => ({ name, qty }));
 
@@ -425,11 +451,15 @@ function ProductionModule() {
 
       {!loading && !error && (
         <>
-          <SubSection icon="🧺" title={selectedDate ? "קיטים שהוכנו" : "קיטים שהוכנו היום"} empty={kits.rows.length === 0}>
-            {kits.rows.map((r, i) => (
-              <React.Fragment key={i}>
-                <Row label={r["מתכון"]} sub={`חו"ג: ${r["חו\"ג"] || "-"}`} right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{r["כמות קיטים סופי"]} קיטים</span>} />
-                {i < kits.rows.length - 1 && <Divider />}
+          <SubSection icon="🧺" title={selectedDate ? "אצוות קיטים שהוכנו" : "אצוות קיטים שהוכנו היום"} empty={batches.length === 0}>
+            {batches.map((b, i) => (
+              <React.Fragment key={b.batchId}>
+                <Row
+                  label={`${b.recipe} · אצווה ${b.batchId}`}
+                  sub={`הוכנס למיקסר ${b.mixerTime || "-"} · ${b.ingredientCount} מרכיבים`}
+                  right={<span style={{ fontSize: 13, fontWeight: 600, color: CAT.production.main }}>{b.qty} קיטים</span>}
+                />
+                {i < batches.length - 1 && <Divider />}
               </React.Fragment>
             ))}
           </SubSection>
