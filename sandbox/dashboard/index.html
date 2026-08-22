@@ -50,6 +50,10 @@ const HACCP_WEBHOOK_URL =
 const PRODUCTION_LIVE_WEBHOOK_URL =
   "https://script.google.com/macros/s/AKfycby7_j6YbF21KHUW0XKzzXHlvoi8PoC-49OoYj1wr-6jzPi8h4u_k0K1272hKRUux19k/exec";
 
+// חיבור קריאה (GET) ליומן בטיחות מזון ואי-התאמות החי (haccp-app) - נוסף doGet, doPost לא השתנה
+const FS_NC_WEBHOOK_URL =
+  "https://script.google.com/macros/s/AKfycbwmKaBal0PU7hrmGYwQ54226yWti4zDPpOnQfrHsOufi0NpSkUaeVKuZEC6jvw2XIorHQ/exec";
+
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
@@ -228,6 +232,35 @@ function useProductionLive(formType, date) {
   return { rows, loading, error, reload: load };
 }
 
+// קריאה בלבד (GET) מיומן בטיחות מזון/אי-התאמות החי (haccp-app)
+// type: "fs" (בטיחות מזון) או "nc" (אי-התאמות), date אופציונלי YYYY-MM-DD
+function useFsNcLive(type, date) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    const dateParam = date ? "&date=" + date : "";
+    fetch(FS_NC_WEBHOOK_URL + "?type=" + type + dateParam)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.error) throw new Error(data.error);
+        setRows(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "לא ניתן היה לטעון נתונים");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { load(); }, [type, date]);
+
+  return { rows, loading, error, reload: load };
+}
+
 function mapHaccpStatus(s) {
   if (s === "תקין") return "approved";
   if (s === "לא תקין") return "failed";
@@ -310,18 +343,15 @@ function Overview({ plan }) {
 function HaccpModule({ plan }) {
   const { rows: liveRows, loading, error, reload } = useHaccpRecords(10);
   const gmp = useLiveRecords("gmp_checklist", 5);
-  const nc = useLiveRecords("non_conformance", 20);
+  const nc = useFsNcLive("nc");   // אי-התאמות - נתונים חיים אמיתיים (haccp-app)
+  const fs = useFsNcLive("fs");   // בטיחות מזון - נתונים חיים אמיתיים (haccp-app)
 
   const [activeTab, setActiveTab] = useState("kabala");
   const TABS = [
     { id: "kabala", label: "📥 קבלת חומרי גלם", count: liveRows.length },
     { id: "gmp", label: "✅ בדיקות GMP", count: gmp.rows.length },
     { id: "nc", label: "⚠️ אי-התאמות", count: nc.rows.length },
-  ];
-
-  const proRows = [
-    { id: "0229", form: "אי-התאמה — סטיית טמפרטורה", by: "רונית כהן", time: "אתמול 19:05", status: "pending" },
-    { id: "0228", form: "בקרת לישה", by: "משה דהן", time: "אתמול 14:22", status: "failed" },
+    { id: "fs", label: "🛡️ בטיחות מזון", count: fs.rows.length },
   ];
 
   const latestGmp = gmp.rows.length > 0 ? gmp.rows[0] : null;
@@ -334,7 +364,7 @@ function HaccpModule({ plan }) {
         accent={CAT.haccp.main}
         action={
           <button
-            onClick={() => { reload(); gmp.reload(); nc.reload(); }}
+            onClick={() => { reload(); gmp.reload(); nc.reload(); fs.reload(); }}
             style={{ fontSize: 12, color: CAT.haccp.main, background: CAT.haccp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
           >
             רענן
@@ -465,21 +495,37 @@ function HaccpModule({ plan }) {
             {nc.loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
             {nc.error && <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>שגיאה: {nc.error}</div>}
             {!nc.loading && !nc.error && nc.rows.length === 0 && (
-              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין אי-התאמות פתוחות. 🎉</div>
+              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין אי-התאמות רשומות. 🎉</div>
             )}
-            {!nc.loading && !nc.error && nc.rows.slice().reverse().map((r, i, arr) => (
+            {!nc.loading && !nc.error && nc.rows.slice().reverse().map((r, i, arr) => {
+              const statusMap = { "נסגר": "approved", "טופל": "approved", "בטיפול": "pending", "פתוח": "failed" };
+              return (
+                <React.Fragment key={i}>
+                  <Row
+                    label={`${r["תחום"] || "(ללא תחום)"} · ${r["מקור"] || ""}`}
+                    sub={`${r["תאריך"] || ""} · ${r["תיאור אי-ההתאמה"] || ""}`}
+                    right={<Badge status={statusMap[r["סטטוס"]] || "pending"} />}
+                  />
+                  {i < arr.length - 1 && <Divider />}
+                </React.Fragment>
+              );
+            })}
+          </>
+        )}
+
+        {activeTab === "fs" && (
+          <>
+            {fs.loading && <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>טוען נתונים...</div>}
+            {fs.error && <div style={{ fontSize: 13, color: T.danger, padding: "12px 0" }}>שגיאה: {fs.error}</div>}
+            {!fs.loading && !fs.error && fs.rows.length === 0 && (
+              <div style={{ fontSize: 13, color: T.inkFaint, padding: "12px 0" }}>אין רשומות בטיחות מזון עדיין.</div>
+            )}
+            {!fs.loading && !fs.error && fs.rows.slice().reverse().map((r, i, arr) => (
               <React.Fragment key={i}>
                 <Row
-                  label={`${r.category || "(ללא קטגוריה)"} · ${r.severity || ""}`}
-                  sub={`${r.date} · דווח ע"י ${r.reporter || "-"} · ${r.description || ""}`}
-                  right={
-                    <Badge
-                      status={
-                        r.resolution === "סגור" ? "approved" :
-                        r.severity === "חמור" ? "failed" : "pending"
-                      }
-                    />
-                  }
+                  label={r["נקודת בקרה"] || "(ללא נקודת בקרה)"}
+                  sub={`${r["תאריך"] || ""} · ${r["סוג סכנה"] || ""} · ${r["שלב תהליך"] || ""}`}
+                  right={<Badge status={r["חריגה"] === "כן" ? "failed" : "approved"} />}
                 />
                 {i < arr.length - 1 && <Divider />}
               </React.Fragment>
