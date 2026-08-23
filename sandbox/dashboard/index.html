@@ -312,6 +312,33 @@ function useOrdersLive(date) {
   return { rows, sourceFile, loading, error, reload: load };
 }
 
+// קריאה בלבד (GET) לסטטוס תזכורות/הזמנות של כל הלקוחות (גיליון "לקוחות משלוחים")
+function useCustomersLive() {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    fetch(ORDERS_WEBHOOK_URL + "?action=customers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.ok) throw new Error(data.error || "שגיאה לא ידועה");
+        setRows(Array.isArray(data.records) ? data.records : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "לא ניתן היה לטעון נתונים");
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => { load(); }, []);
+
+  return { rows, loading, error, reload: load };
+}
+
 // ממיר תאריך גולמי (למשל "2026-07-05T07:00:00.000Z") לפורמט קצר וקריא
 function shortDate(v) {
   if (!v) return "";
@@ -977,14 +1004,16 @@ function WhatsappModule() {
     { name: "דוד · רכב 3", dest: "מאפיית הכיכר, אשקלון", eta: "27 דק'", status: "pending" },
     { name: "יוסי · רכב 2", dest: "מלון דן, אשדוד", eta: "הגיע", status: "approved" },
   ];
-  const reminders = [
-    { text: "תזכורת חידוש הזמנה שבועית — מלון דן", time: "מחר 07:00" },
-    { text: "תזכורת תשלום — מאפיית הכיכר", time: "היום 16:00" },
-  ];
+  const customers = useCustomersLive();
+
+  const statusMap = { "אושר": "approved", "בוטל": "failed", "ממתין להזמנה": "pending" };
+
+  // רק לקוחות שבאמת קיבלו תזכורת (יש להם תאריך תזכורת אחרונה)
+  const remindedCustomers = customers.rows.filter((r) => r["תאריך תזכורת אחרונה"]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <Card title="מעקב משלוחים חי" subtitle="מבוט הוואטסאפ האוטומטי" accent={CAT.whatsapp.main} style={{ gridColumn: "1 / -1" }}>
+      <Card title="מעקב משלוחים חי" subtitle="מבוט הוואטסאפ האוטומטי — עדיין לא מחובר" accent={CAT.whatsapp.main} style={{ gridColumn: "1 / -1" }}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           {drivers.map((d) => (
             <div key={d.name} style={{ background: T.bg, borderRadius: 12, padding: 14 }}>
@@ -999,11 +1028,39 @@ function WhatsappModule() {
         </div>
       </Card>
 
-      <Card title="תזכורות אוטומטיות" subtitle="ללקוחות ולנהגים" accent={CAT.whatsapp.main} style={{ gridColumn: "1 / -1" }}>
-        {reminders.map((r, i) => (
-          <React.Fragment key={r.text}>
-            <Row label={r.text} right={<span style={{ fontSize: 12.5, color: T.inkFaint }}>{r.time}</span>} />
-            {i < reminders.length - 1 && <Divider />}
+      <Card
+        title="תזכורות ולקוחות — נתונים חיים"
+        subtitle="מי קיבל תזכורת ומי הזמין"
+        accent={CAT.whatsapp.main}
+        style={{ gridColumn: "1 / -1" }}
+        action={
+          <button
+            onClick={customers.reload}
+            style={{ fontSize: 12, color: CAT.whatsapp.main, background: CAT.whatsapp.soft, border: "none", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontWeight: 600 }}
+          >
+            רענן
+          </button>
+        }
+      >
+        {customers.loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען נתונים...</div>}
+        {customers.error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {customers.error}</div>}
+        {!customers.loading && !customers.error && remindedCustomers.length === 0 && (
+          <div style={{ fontSize: 13, color: T.inkFaint }}>אין עדיין תזכורות שנשלחו.</div>
+        )}
+        {!customers.loading && !customers.error && remindedCustomers.map((c, i, arr) => (
+          <React.Fragment key={i}>
+            <Row
+              label={c["שם לקוח (עסק)"] || "(ללא שם)"}
+              sub={`תזכורת: ${c["תאריך תזכורת אחרונה"]} · משלוח ליום ${c["יום משלוח נוכחי"] || "-"}${c["תזכורת נוספת נשלחה"] === "כן" ? " · נשלחה תזכורת נוספת" : ""}`}
+              right={
+                statusMap[c["סטטוס הזמנה"]] ? (
+                  <Badge status={statusMap[c["סטטוס הזמנה"]]} />
+                ) : (
+                  <span style={{ fontSize: 12, color: T.inkFaint }}>{c["סטטוס הזמנה"] || "-"}</span>
+                )
+              }
+            />
+            {i < arr.length - 1 && <Divider />}
           </React.Fragment>
         ))}
       </Card>
