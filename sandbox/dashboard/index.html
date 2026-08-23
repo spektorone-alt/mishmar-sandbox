@@ -1167,7 +1167,7 @@ function OrdersModule() {
 
 function MishmarDashboard() {
   const [active, setActive] = useState("overview");
-  const [plan, setPlan] = useState("free");
+  const [plan, setPlan] = useState("pro"); // זמנית: הכל פתוח כברירת מחדל, בלי נעילות
   const [collapsed, setCollapsed] = useState(false);
   const factory = { name: "אדר בצקים" };
   const activeColor = CAT[active].main;
