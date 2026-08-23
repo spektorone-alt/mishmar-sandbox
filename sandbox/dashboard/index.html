@@ -365,6 +365,7 @@ function Overview({ plan }) {
   const mixers = useProductionLive("kneading");
   const packaging = useProductionLive("packaging");
   const orders = useOrdersLive();
+  const customers = useCustomersLive();
 
   // סופרים רק אצווה ייחודית אחת (לפי מס' אצווה של חו"ג), לא כל שורת מרכיב בנפרד
   const seenBatches = {};
@@ -500,10 +501,32 @@ function Overview({ plan }) {
       )}
 
       {plan === "pro" ? (
-        <Card title="משלוחים" subtitle="עדיין לא מחובר — מערכת נפרדת" accent={CAT.whatsapp.main}>
-          <div style={{ fontSize: 12.5, color: T.inkFaint }}>
-            נתוני משלוחים חיים ידרשו חיבור למערכת מעקב הנהגים/לקוחות הנפרדת.
-          </div>
+        <Card title="הזמנות" subtitle="סטטוס תזכורות והזמנות · נתונים חיים" accent={CAT.whatsapp.main}>
+          {customers.loading && <div style={{ fontSize: 13, color: T.inkFaint }}>טוען...</div>}
+          {customers.error && <div style={{ fontSize: 13, color: T.danger }}>שגיאה: {customers.error}</div>}
+          {!customers.loading && !customers.error && (
+            <>
+              <Row
+                label="סה״כ קיבלו התראה"
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{customers.rows.filter((r) => r["תאריך תזכורת אחרונה"]).length}</span>}
+              />
+              <Divider />
+              <Row
+                label="סה״כ אישרו"
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: T.success }}>{customers.rows.filter((r) => r["סטטוס הזמנה"] === "אושר").length}</span>}
+              />
+              <Divider />
+              <Row
+                label="סה״כ ממתינים"
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: T.warning }}>{customers.rows.filter((r) => r["סטטוס הזמנה"] === "ממתין להזמנה").length}</span>}
+              />
+              <Divider />
+              <Row
+                label="סה״כ ביטלו"
+                right={<span style={{ fontSize: 14, fontWeight: 700, color: T.danger }}>{customers.rows.filter((r) => r["סטטוס הזמנה"] === "בוטל").length}</span>}
+              />
+            </>
+          )}
         </Card>
       ) : (
         <LockedCard title="משלוחים, הזמנות ותזכורות" blurb="קליטת הזמנות אוטומטית, מעקב GPS חי ותזכורות ללקוחות." accent={CAT.whatsapp.main} soft={CAT.whatsapp.soft} />
@@ -1009,7 +1032,19 @@ function WhatsappModule() {
   const statusMap = { "אושר": "approved", "בוטל": "failed", "ממתין להזמנה": "pending" };
 
   // רק לקוחות שבאמת קיבלו תזכורת (יש להם תאריך תזכורת אחרונה)
-  const remindedCustomers = customers.rows.filter((r) => r["תאריך תזכורת אחרונה"]);
+  // רק לקוחות שקיבלו תזכורת, ורק בתאריך התזכורת האחרון שבאמת קיים (לא כל ההיסטוריה)
+  const allReminded = customers.rows.filter((r) => r["תאריך תזכורת אחרונה"]);
+  const parseDDMMYYYY = (s) => {
+    const p = String(s).split(".");
+    return p.length === 3 ? new Date(Number(p[2]), Number(p[1]) - 1, Number(p[0])) : new Date(0);
+  };
+  const latestReminderDate = allReminded.reduce((max, r) => {
+    const d = parseDDMMYYYY(r["תאריך תזכורת אחרונה"]);
+    return d > max ? d : max;
+  }, new Date(0));
+  const remindedCustomers = allReminded.filter(
+    (r) => parseDDMMYYYY(r["תאריך תזכורת אחרונה"]).getTime() === latestReminderDate.getTime()
+  );
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1030,7 +1065,7 @@ function WhatsappModule() {
 
       <Card
         title="תזכורות ולקוחות — נתונים חיים"
-        subtitle="מי קיבל תזכורת ומי הזמין"
+        subtitle="מי קיבל תזכורת ומי הזמין · תזכורת אחרונה בלבד"
         accent={CAT.whatsapp.main}
         style={{ gridColumn: "1 / -1" }}
         action={
